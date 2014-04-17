@@ -24,11 +24,12 @@ goog.require('goog.a11y.aria');
 goog.require('goog.a11y.aria.Role');
 goog.require('goog.a11y.aria.State');
 goog.require('goog.array');
+goog.require('goog.asserts');
 goog.require('goog.dom');
 goog.require('goog.dom.NodeIterator');
 goog.require('goog.dom.NodeType');
 goog.require('goog.dom.TagName');
-goog.require('goog.dom.classes');
+goog.require('goog.dom.classlist');
 goog.require('goog.iter');
 goog.require('goog.style');
 goog.require('goog.ui.ControlRenderer');
@@ -172,6 +173,8 @@ goog.ui.PaletteRenderer.prototype.createCell = function(node, dom) {
         goog.ui.PaletteRenderer.cellId_++
   }, node);
   goog.a11y.aria.setRole(cell, goog.a11y.aria.Role.GRIDCELL);
+  // Initialize to an unselected state.
+  goog.a11y.aria.setState(cell, goog.a11y.aria.State.SELECTED, false);
 
   if (!goog.dom.getTextContent(cell) && !goog.a11y.aria.getLabel(cell)) {
     var ariaLabelForCell = this.findAriaLabelForCell_(cell);
@@ -299,8 +302,8 @@ goog.ui.PaletteRenderer.prototype.setContent = function(element, content) {
 goog.ui.PaletteRenderer.prototype.getContainingItem = function(palette, node) {
   var root = palette.getElement();
   while (node && node.nodeType == goog.dom.NodeType.ELEMENT && node != root) {
-    if (node.tagName == goog.dom.TagName.TD && goog.dom.classes.has(
-        /** @type {Element} */ (node),
+    if (node.tagName == goog.dom.TagName.TD && goog.dom.classlist.contains(
+        /** @type {!Element} */ (node),
         goog.getCssName(this.getCssClass(), 'cell'))) {
       return node.firstChild;
     }
@@ -324,7 +327,8 @@ goog.ui.PaletteRenderer.prototype.highlightCell = function(palette,
                                                            highlight) {
   if (node) {
     var cell = this.getCellForItem(node);
-    goog.dom.classes.enable(cell,
+    goog.asserts.assert(cell);
+    goog.dom.classlist.enable(cell,
         goog.getCssName(this.getCssClass(), 'cell-hover'), highlight);
     // See http://www.w3.org/TR/2006/WD-aria-state-20061220/#activedescendent
     // for an explanation of the activedescendent.
@@ -353,10 +357,11 @@ goog.ui.PaletteRenderer.prototype.getCellForItem = function(node) {
  */
 goog.ui.PaletteRenderer.prototype.selectCell = function(palette, node, select) {
   if (node) {
-    var cell = /** @type {Element} */ (node.parentNode);
-    goog.dom.classes.enable(cell,
+    var cell = /** @type {!Element} */ (node.parentNode);
+    goog.dom.classlist.enable(cell,
         goog.getCssName(this.getCssClass(), 'cell-selected'),
         select);
+    goog.a11y.aria.setState(cell, goog.a11y.aria.State.SELECTED, select);
   }
 };
 

@@ -160,7 +160,7 @@ goog.require('goog.userAgent');
  * @extends {goog.events.EventTarget}
  */
 goog.net.IframeIo = function() {
-  goog.base(this);
+  goog.net.IframeIo.base(this, 'constructor');
 
   /**
    * Name for this IframeIo and frame
@@ -298,7 +298,8 @@ goog.net.IframeIo.handleIncrementalData = function(win, data) {
   if (iframeIo && iframeName == iframeIo.iframeName_) {
     iframeIo.handleIncrementalData_(data);
   } else {
-    goog.log.getLogger('goog.net.IframeIo').info(
+    var logger = goog.log.getLogger('goog.net.IframeIo');
+    goog.log.info(logger,
         'Incremental iframe data routed for unknown iframe');
   }
 };
@@ -352,6 +353,16 @@ goog.net.IframeIo.addFormInputs_ = function(form, data) {
         {'type': 'hidden', 'name': key, 'value': value});
     form.appendChild(inp);
   });
+};
+
+
+/**
+ * @return {boolean} Whether we can use readyState to monitor iframe loading.
+ * @private
+ */
+goog.net.IframeIo.useIeReadyStateCodePath_ = function() {
+  // ReadyState is only available on iframes up to IE10.
+  return goog.userAgent.IE && !goog.userAgent.isVersionOrHigher('11');
 };
 
 
@@ -554,6 +565,7 @@ goog.net.IframeIo.prototype.send = function(
   this.form_.method = method;
 
   this.sendFormInternal_();
+  this.clearForm_();
 };
 
 
@@ -833,9 +845,10 @@ goog.net.IframeIo.prototype.sendFormInternal_ = function() {
   // Make Iframe
   this.createIframe_();
 
-  if (goog.userAgent.IE) {
-    // In IE we simply create the frame, wait until it is ready, then post the
-    // form to the iframe and wait for the readystate to change to 'complete'
+  if (goog.net.IframeIo.useIeReadyStateCodePath_()) {
+    // In IE<11 we simply create the frame, wait until it is ready, then post
+    // the form to the iframe and wait for the readystate to change to
+    // 'complete'
 
     // Set the target to the iframe's name
     this.form_.target = this.iframeName_ || '';
@@ -933,7 +946,7 @@ goog.net.IframeIo.prototype.sendFormInternal_ = function() {
       }
     }
 
-    // Some versions of Firefox (1.5 - 1.5.07?) fail to clone the value
+    // IE and some versions of Firefox (1.5 - 1.5.07?) fail to clone the value
     // attribute for <input type="file"> nodes, which results in an empty
     // upload if the clone is submitted.  Check, and if the clone failed, submit
     // using the original form instead.
@@ -1033,7 +1046,11 @@ goog.net.IframeIo.prototype.onIframeLoaded_ = function(e) {
   }
   goog.events.unlisten(this.getRequestIframe(),
       goog.events.EventType.LOAD, this.onIframeLoaded_, false, this);
-  this.handleLoad_(this.getContentDocument_());
+  try {
+    this.handleLoad_(this.getContentDocument_());
+  } catch (ex) {
+    this.handleError_(goog.net.ErrorCode.ACCESS_DENIED);
+  }
 };
 
 
@@ -1261,15 +1278,26 @@ goog.net.IframeIo.prototype.disposeIframes_ = function() {
 
 
 /**
+ * Removes all the child nodes from the static form so it can be reused again.
+ * This should happen right after sending a request. Otherwise, there can be
+ * issues when another iframe uses this form right after the first iframe.
+ * @private
+ */
+goog.net.IframeIo.prototype.clearForm_ = function() {
+  if (this.form_ && this.form_ == goog.net.IframeIo.form_) {
+    goog.dom.removeChildren(this.form_);
+  }
+};
+
+
+/**
  * Disposes of the Form.  Since IE6 leaks form nodes, this just cleans up the
  * DOM and nullifies the instances reference so the form can be used for another
  * request.
  * @private
  */
 goog.net.IframeIo.prototype.disposeForm_ = function() {
-  if (this.form_ && this.form_ == goog.net.IframeIo.form_) {
-    goog.dom.removeChildren(this.form_);
-  }
+  this.clearForm_();
   this.form_ = null;
 };
 
@@ -1293,9 +1321,11 @@ goog.net.IframeIo.prototype.getContentDocument_ = function() {
  */
 goog.net.IframeIo.prototype.getRequestIframe = function() {
   if (this.iframe_) {
-    return /** @type {HTMLIFrameElement} */(goog.userAgent.IE ? this.iframe_ :
-        goog.dom.getFrameContentDocument(this.iframe_).getElementById(
-            this.iframeName_ + goog.net.IframeIo.INNER_FRAME_SUFFIX));
+    return /** @type {HTMLIFrameElement} */(
+        goog.net.IframeIo.useIeReadyStateCodePath_() ?
+            this.iframe_ :
+            goog.dom.getFrameContentDocument(this.iframe_).getElementById(
+                this.iframeName_ + goog.net.IframeIo.INNER_FRAME_SUFFIX));
   }
   return null;
 };
@@ -1342,6 +1372,7 @@ goog.net.IframeIo.prototype.testForFirefoxSilentError_ = function() {
  * @param {Object} data The data associated with the event.
  * @extends {goog.events.Event}
  * @constructor
+ * @final
  */
 goog.net.IframeIo.IncrementalDataEvent = function(data) {
   goog.events.Event.call(this, goog.net.EventType.INCREMENTAL_DATA);

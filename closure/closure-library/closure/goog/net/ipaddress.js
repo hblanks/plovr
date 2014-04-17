@@ -167,6 +167,7 @@ goog.net.IpAddress.fromUriString = function(address) {
  * @param {(string|!goog.math.Integer)} address The address to store.
  * @extends {goog.net.IpAddress}
  * @constructor
+ * @final
  */
 goog.net.Ipv4Address = function(address) {
   var ip = goog.math.Integer.ZERO;
@@ -199,7 +200,8 @@ goog.net.Ipv4Address = function(address) {
       ip = ip.shiftLeft(8).or(intOctet);
     }
   }
-  goog.base(this, /** @type {!goog.math.Integer} */ (ip), 4);
+  goog.net.Ipv4Address.base(
+      this, 'constructor', /** @type {!goog.math.Integer} */ (ip), 4);
 };
 goog.inherits(goog.net.Ipv4Address, goog.net.IpAddress);
 
@@ -269,6 +271,7 @@ goog.net.Ipv4Address.prototype.toUriString = function() {
  * @param {(string|!goog.math.Integer)} address The address to store.
  * @constructor
  * @extends {goog.net.IpAddress}
+ * @final
  */
 goog.net.Ipv6Address = function(address) {
   var ip = goog.math.Integer.ZERO;
@@ -320,7 +323,8 @@ goog.net.Ipv6Address = function(address) {
       ip = ip.shiftLeft(16).or(parsedHextet);
     }
   }
-  goog.base(this, /** @type {!goog.math.Integer} */ (ip), 6);
+  goog.net.Ipv6Address.base(
+      this, 'constructor', /** @type {!goog.math.Integer} */ (ip), 6);
 };
 goog.inherits(goog.net.Ipv6Address, goog.net.IpAddress);
 

@@ -19,7 +19,7 @@ See the COPYING file for details.
   goog.require('goog.a11y.aria.Role');
   goog.require('goog.a11y.aria.State');
   goog.require('goog.dom');
-  goog.require('goog.dom.classes');
+  goog.require('goog.dom.classlist');
   goog.require('goog.events');
   goog.require('goog.events.Event');
   goog.require('goog.testing.events');
@@ -158,16 +158,16 @@ function checkButtonCaption(button) {
  * @param {goog.ui.Button} button A button.
  */
 function checkAriaState(button) {
-  assertEquals('menu buttons should not have default aria-expanded state', '',
+  assertEquals('menu buttons should have default aria-expanded == false', 'false',
   goog.a11y.aria.getState(button.getElement(), goog.a11y.aria.State.EXPANDED));
   button.setOpen(true);
-  assertEquals('menu buttons should not have aria-expanded state after ' +
-    'opening', '',
+  assertEquals('menu buttons should not aria-expanded == true after ' +
+    'opening', 'true',
   goog.a11y.aria.getState(button.getElement(), goog.a11y.aria.State.EXPANDED));
 }
 
 function hasInlineBlock(el) {
-  return goog.dom.classes.has(el, 'goog-inline-block');
+  return goog.dom.classlist.contains(el, 'goog-inline-block');
 }
 
 function testDoesntCallGetCssClassInConstructor() {

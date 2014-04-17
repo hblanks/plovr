@@ -36,6 +36,7 @@ goog.require('goog.module.ModuleLoadCallback');
  * @param {string} id The module's ID.
  * @constructor
  * @extends {goog.Disposable}
+ * @final
  */
 goog.module.ModuleInfo = function(deps, id) {
   goog.Disposable.call(this);
@@ -212,7 +213,7 @@ goog.module.ModuleInfo.prototype.registerErrback = function(
  *     is the module context.
  * @param {Object=} opt_handler Optional handler under whose scope to execute
  *     the callback.
- * @return {goog.module.ModuleLoadCallback} Reference to the callback
+ * @return {!goog.module.ModuleLoadCallback} Reference to the callback
  *     object.
  * @private
  */

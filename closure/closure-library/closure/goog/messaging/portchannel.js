@@ -59,9 +59,10 @@ goog.require('goog.string');
  *     worker or removing it from the DOM if it's an iframe.
  * @constructor
  * @extends {goog.messaging.AbstractChannel}
+ * @final
  */
 goog.messaging.PortChannel = function(underlyingPort) {
-  goog.base(this);
+  goog.messaging.PortChannel.base(this, 'constructor');
 
   /**
    * The wrapped message-passing entity.
@@ -397,5 +398,5 @@ goog.messaging.PortChannel.prototype.disposeInternal = function() {
     this.port_.terminate();
   }
   delete this.port_;
-  goog.base(this, 'disposeInternal');
+  goog.messaging.PortChannel.base(this, 'disposeInternal');
 };

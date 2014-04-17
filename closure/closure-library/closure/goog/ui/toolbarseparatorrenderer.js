@@ -20,7 +20,8 @@
 
 goog.provide('goog.ui.ToolbarSeparatorRenderer');
 
-goog.require('goog.dom.classes');
+goog.require('goog.asserts');
+goog.require('goog.dom.classlist');
 goog.require('goog.ui.INLINE_BLOCK_CLASSNAME');
 goog.require('goog.ui.MenuSeparatorRenderer');
 
@@ -75,7 +76,8 @@ goog.ui.ToolbarSeparatorRenderer.prototype.decorate = function(separator,
                                                                element) {
   element = goog.ui.ToolbarSeparatorRenderer.superClass_.decorate.call(this,
       separator, element);
-  goog.dom.classes.add(element, goog.ui.INLINE_BLOCK_CLASSNAME);
+  goog.asserts.assert(element);
+  goog.dom.classlist.add(element, goog.ui.INLINE_BLOCK_CLASSNAME);
   return element;
 };
 

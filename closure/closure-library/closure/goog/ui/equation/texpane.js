@@ -37,6 +37,7 @@ goog.require('goog.ui.equation.PaletteEvent');
  * @param {goog.dom.DomHelper=} opt_domHelper Optional DOM helper.
  * @constructor
  * @extends {goog.ui.equation.EditorPane}
+ * @final
  */
 goog.ui.equation.TexPane = function(
     context, helpUrl, opt_domHelper) {
@@ -247,13 +248,13 @@ goog.ui.equation.TexPane.prototype.enterDocument = function() {
   // Listen to the action event on the active palette.
   this.getHandler().listen(this.paletteManager_,
       goog.ui.equation.PaletteEvent.Type.ACTION,
-      this.handlePaletteAction_, false, this);
+      this.handlePaletteAction_);
 };
 
 
 /** @override */
 goog.ui.equation.TexPane.prototype.setVisible = function(visible) {
-  goog.base(this, 'setVisible', visible);
+  goog.ui.equation.TexPane.base(this, 'setVisible', visible);
   if (visible) {
     goog.Timer.callOnce(this.focusTexEdit_, 0, this);
   }
@@ -440,5 +441,5 @@ goog.ui.equation.TexPane.prototype.setEquation =
 goog.ui.equation.TexPane.prototype.disposeInternal = function() {
   this.texInputHandler_.dispose();
   this.paletteManager_ = null;
-  goog.base(this, 'disposeInternal');
+  goog.ui.equation.TexPane.base(this, 'disposeInternal');
 };

@@ -36,9 +36,10 @@ goog.require('goog.object');
  * @param {goog.dom.DomHelper=} opt_domHelper DOM helper.
  * @constructor
  * @extends {goog.Disposable}
+ * @final
  */
 goog.a11y.aria.Announcer = function(opt_domHelper) {
-  goog.base(this);
+  goog.a11y.aria.Announcer.base(this, 'constructor');
 
   /**
    * @type {goog.dom.DomHelper}
@@ -63,7 +64,7 @@ goog.a11y.aria.Announcer.prototype.disposeInternal = function() {
       this.liveRegions_, this.domHelper_.removeNode, this.domHelper_);
   this.liveRegions_ = null;
   this.domHelper_ = null;
-  goog.base(this, 'disposeInternal');
+  goog.a11y.aria.Announcer.base(this, 'disposeInternal');
 };
 
 

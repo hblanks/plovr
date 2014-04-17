@@ -23,9 +23,13 @@ goog.provide('goog.net.xpc.IframePollingTransport.Sender');
 
 goog.require('goog.array');
 goog.require('goog.dom');
+goog.require('goog.log');
+goog.require('goog.log.Level');
 goog.require('goog.net.xpc');
+goog.require('goog.net.xpc.CfgFields');
 goog.require('goog.net.xpc.CrossPageChannelRole');
 goog.require('goog.net.xpc.Transport');
+goog.require('goog.net.xpc.TransportTypes');
 goog.require('goog.userAgent');
 
 
@@ -44,9 +48,10 @@ goog.require('goog.userAgent');
  *     the correct window.
  * @constructor
  * @extends {goog.net.xpc.Transport}
+ * @final
  */
 goog.net.xpc.IframePollingTransport = function(channel, opt_domHelper) {
-  goog.base(this, opt_domHelper);
+  goog.net.xpc.IframePollingTransport.base(this, 'constructor', opt_domHelper);
 
   /**
    * The channel this transport belongs to.
@@ -286,7 +291,7 @@ goog.net.xpc.IframePollingTransport.prototype.maybeInnerPeerReconnect_ =
 
   goog.log.log(goog.net.xpc.logger, goog.log.Level.FINEST,
       'Inner peer reconnect triggered.');
-  this.channel_.name = goog.net.xpc.getRandomString(10);
+  this.channel_.updateChannelNameAndCatalog(goog.net.xpc.getRandomString(10));
   goog.log.log(goog.net.xpc.logger, goog.log.Level.FINEST,
       'switching channels: ' + this.channel_.name);
   this.deconstructSenderFrames_();
@@ -686,7 +691,7 @@ goog.net.xpc.IframePollingTransport.prototype.send =
 
 /** @override */
 goog.net.xpc.IframePollingTransport.prototype.disposeInternal = function() {
-  goog.base(this, 'disposeInternal');
+  goog.net.xpc.IframePollingTransport.base(this, 'disposeInternal');
 
   var receivers = goog.net.xpc.IframePollingTransport.receivers_;
   goog.array.remove(receivers, this.msgReceiver_);
@@ -812,6 +817,7 @@ goog.net.xpc.IframePollingTransport.startRcvTimer_ = function() {
  * @constructor
  * @param {string} url The url the other document will use for polling.
  * @param {Object} windowObj The frame used for sending information to.
+ * @final
  */
 goog.net.xpc.IframePollingTransport.Sender = function(url, windowObj) {
   /**
@@ -880,6 +886,7 @@ goog.net.xpc.IframePollingTransport.Sender.prototype.send = function(payload) {
  * @param {Object} windowObj The window-object to poll for location-changes.
  * @param {Function} callback The callback-function to be called when
  *     location has changed.
+ * @final
  */
 goog.net.xpc.IframePollingTransport.Receiver = function(transport,
                                                         windowObj,

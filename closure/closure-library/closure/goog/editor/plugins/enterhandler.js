@@ -73,7 +73,7 @@ goog.editor.plugins.EnterHandler.prototype.getTrogClassId = function() {
 
 /** @override */
 goog.editor.plugins.EnterHandler.prototype.enable = function(fieldObject) {
-  goog.base(this, 'enable', fieldObject);
+  goog.editor.plugins.EnterHandler.base(this, 'enable', fieldObject);
 
   if (goog.editor.BrowserFeature.SUPPORTS_OPERA_DEFAULTBLOCK_COMMAND &&
       (this.tag == goog.dom.TagName.P || this.tag == goog.dom.TagName.DIV)) {
@@ -553,7 +553,7 @@ goog.editor.plugins.EnterHandler.prototype.releasePositionObject_ =
 /**
  * Delete the selection at the current cursor position, then returns a temporary
  * node at the current position.
- * @return {Node} A temporary node marking the current cursor position. This
+ * @return {!Node} A temporary node marking the current cursor position. This
  *     node should eventually be removed from the DOM.
  * @private
  */

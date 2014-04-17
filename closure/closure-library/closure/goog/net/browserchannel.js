@@ -55,6 +55,7 @@ goog.require('goog.net.ChannelDebug');
 goog.require('goog.net.ChannelRequest');
 goog.require('goog.net.XhrIo');
 goog.require('goog.net.tmpnetwork');
+goog.require('goog.object');
 goog.require('goog.string');
 goog.require('goog.structs');
 goog.require('goog.structs.CircularBuffer');
@@ -145,6 +146,7 @@ goog.net.BrowserChannel = function(opt_clientVersion, opt_firstTestResults,
  * @param {Object|goog.structs.Map} map The map itself.
  * @param {Object=} opt_context The context associated with the map.
  * @constructor
+ * @final
  */
 goog.net.BrowserChannel.QueuedMap = function(mapId, map, opt_context) {
   /**
@@ -605,6 +607,7 @@ goog.net.BrowserChannel.Event.STAT_EVENT = 'statevent';
  * @param {goog.net.BrowserChannel.Stat} stat The stat.
  * @constructor
  * @extends {goog.events.Event}
+ * @final
  */
 goog.net.BrowserChannel.StatEvent = function(eventTarget, stat) {
   goog.events.Event.call(this, goog.net.BrowserChannel.Event.STAT_EVENT,
@@ -639,6 +642,7 @@ goog.net.BrowserChannel.Event.TIMING_EVENT = 'timingevent';
  * @param {number} retries The number of times the POST had to be retried.
  * @constructor
  * @extends {goog.events.Event}
+ * @final
  */
 goog.net.BrowserChannel.TimingEvent = function(target, size, rtt, retries) {
   goog.events.Event.call(this, goog.net.BrowserChannel.Event.TIMING_EVENT,
@@ -694,6 +698,7 @@ goog.net.BrowserChannel.ServerReachability = {
  *     reachability event type.
  * @constructor
  * @extends {goog.events.Event}
+ * @final
  */
 goog.net.BrowserChannel.ServerReachabilityEvent = function(target,
     reachabilityType) {
@@ -1548,7 +1553,7 @@ goog.net.BrowserChannel.prototype.addAdditionalParams_ = function(uri) {
   if (this.handler_) {
     var params = this.handler_.getAdditionalParams(this);
     if (params) {
-      goog.structs.forEach(params, function(value, key, coll) {
+      goog.object.forEach(params, function(value, key) {
         uri.setParameterValue(key, value);
       });
     }
@@ -2357,7 +2362,7 @@ goog.net.BrowserChannel.prototype.createDataUri =
   }
 
   if (this.extraParams_) {
-    goog.structs.forEach(this.extraParams_, function(value, key, coll) {
+    goog.object.forEach(this.extraParams_, function(value, key) {
       uri.setParameterValue(key, value);
     });
   }

@@ -168,14 +168,14 @@ goog.ui.ac.InputHandler = function(opt_separators, opt_literals,
 
   /**
    * Event handler used by the input handler to manage events.
-   * @type {goog.events.EventHandler}
+   * @type {goog.events.EventHandler.<!goog.ui.ac.InputHandler>}
    * @private
    */
   this.eh_ = new goog.events.EventHandler(this);
 
   /**
    * Event handler to help us find an input element that already has the focus.
-   * @type {goog.events.EventHandler}
+   * @type {goog.events.EventHandler.<!goog.ui.ac.InputHandler>}
    * @private
    */
   this.activateHandler_ = new goog.events.EventHandler(this);
@@ -515,7 +515,9 @@ goog.ui.ac.InputHandler.prototype.detachInputs = function(var_args) {
  * @return {boolean} Whether to suppress the update event.
  */
 goog.ui.ac.InputHandler.prototype.selectRow = function(row, opt_multi) {
-  this.setTokenText(row.toString(), opt_multi);
+  if (this.activeElement_) {
+    this.setTokenText(row.toString(), opt_multi);
+  }
   return false;
 };
 

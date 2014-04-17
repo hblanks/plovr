@@ -153,7 +153,7 @@ goog.editor.Field = function(id, opt_doc) {
   }
 
   /**
-   * @type {goog.events.EventHandler}
+   * @type {goog.events.EventHandler.<!goog.editor.Field>}
    * @protected
    */
   this.eventRegister = new goog.events.EventHandler(this);
@@ -459,7 +459,12 @@ goog.editor.Field.prototype.addListener = function(type, listener, opt_capture,
       this.usesIframe()) {
     elem = elem.ownerDocument;
   }
-  this.eventRegister.listen(elem, type, listener, opt_capture, opt_handler);
+  if (opt_handler) {
+    this.eventRegister.listenWithScope(
+        elem, type, listener, opt_capture, opt_handler);
+  } else {
+    this.eventRegister.listen(elem, type, listener, opt_capture);
+  }
 };
 
 
@@ -2066,7 +2071,7 @@ goog.editor.Field.prototype.getCleanContents = function() {
 /**
  * Get the copy of the editable field element, which has the innerHTML set
  * correctly.
- * @return {Element} The copy of the editable field.
+ * @return {!Element} The copy of the editable field.
  * @protected
  */
 goog.editor.Field.prototype.getFieldCopy = function() {
@@ -2615,8 +2620,8 @@ goog.editor.Field.prototype.attachIframe = function(iframe) {
 
 /**
  * @param {Object} extraStyles A map of extra styles.
- * @return {goog.editor.icontent.FieldFormatInfo} The FieldFormatInfo object for
- *     this field's configuration.
+ * @return {!goog.editor.icontent.FieldFormatInfo} The FieldFormatInfo
+ *     object for this field's configuration.
  * @protected
  */
 goog.editor.Field.prototype.getFieldFormatInfo = function(extraStyles) {
@@ -2701,7 +2706,7 @@ goog.editor.Field.prototype.clearFieldLoadListener_ = function() {
 
 
 /**
- * @return {Object} Get the HTML attributes for this field's iframe.
+ * @return {!Object} Get the HTML attributes for this field's iframe.
  * @protected
  */
 goog.editor.Field.prototype.getIframeAttributes = function() {

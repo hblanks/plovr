@@ -23,6 +23,7 @@ goog.provide('goog.ui.ComboBox');
 goog.provide('goog.ui.ComboBoxItem');
 
 goog.require('goog.Timer');
+goog.require('goog.asserts');
 goog.require('goog.dom');
 goog.require('goog.dom.classlist');
 goog.require('goog.events.EventType');
@@ -48,14 +49,17 @@ goog.require('goog.userAgent');
 /**
  * A ComboBox control.
  * @param {goog.dom.DomHelper=} opt_domHelper Optional DOM helper.
- * @param {goog.ui.Menu=} opt_menu Optional menu.
+ * @param {goog.ui.Menu=} opt_menu Optional menu component.
+ *     This menu is disposed of by this control.
+ * @param {goog.ui.LabelInput=} opt_labelInput Optional label input.
+ *     This label input is disposed of by this control.
  * @extends {goog.ui.Component}
  * @constructor
  */
-goog.ui.ComboBox = function(opt_domHelper, opt_menu) {
+goog.ui.ComboBox = function(opt_domHelper, opt_menu, opt_labelInput) {
   goog.ui.Component.call(this, opt_domHelper);
 
-  this.labelInput_ = new goog.ui.LabelInput();
+  this.labelInput_ = opt_labelInput || new goog.ui.LabelInput();
   this.enabled_ = true;
 
   // TODO(user): Allow lazy creation of menus/menu items
@@ -228,7 +232,8 @@ goog.ui.ComboBox.prototype.createDom = function() {
 goog.ui.ComboBox.prototype.setEnabled = function(enabled) {
   this.enabled_ = enabled;
   this.labelInput_.setEnabled(enabled);
-  goog.dom.classlist.enable(this.getElement(),
+  goog.dom.classlist.enable(
+      goog.asserts.assert(this.getElement()),
       goog.getCssName('goog-combobox-disabled'), !enabled);
 };
 
@@ -395,6 +400,15 @@ goog.ui.ComboBox.prototype.getMenu = function() {
  */
 goog.ui.ComboBox.prototype.getInputElement = function() {
   return this.input_;
+};
+
+
+/**
+ * @return {goog.ui.LabelInput} A LabelInput control that manages the
+ *     focus/blur state of the input box.
+ */
+goog.ui.ComboBox.prototype.getLabelInput = function() {
+  return this.labelInput_;
 };
 
 
@@ -594,7 +608,8 @@ goog.ui.ComboBox.prototype.positionMenu = function() {
  */
 goog.ui.ComboBox.prototype.showMenu_ = function() {
   this.menu_.setVisible(true);
-  goog.dom.classlist.add(this.getElement(),
+  goog.dom.classlist.add(
+      goog.asserts.assert(this.getElement()),
       goog.getCssName('goog-combobox-active'));
 };
 
@@ -605,7 +620,8 @@ goog.ui.ComboBox.prototype.showMenu_ = function() {
  */
 goog.ui.ComboBox.prototype.hideMenu_ = function() {
   this.menu_.setVisible(false);
-  goog.dom.classlist.remove(this.getElement(),
+  goog.dom.classlist.remove(
+      goog.asserts.assert(this.getElement()),
       goog.getCssName('goog-combobox-active'));
 };
 

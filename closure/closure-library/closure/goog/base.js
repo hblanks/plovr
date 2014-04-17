@@ -50,15 +50,36 @@ goog.global = this;
 /**
  * A hook for overriding the define values in uncompiled mode.
  *
- * In uncompiled mode, {@code CLOSURE_DEFINES} may be defined before loading
- * base.js.  If a key is defined in {@code CLOSURE_DEFINES}, {@code goog.define}
- * will use the value instead of the default value.  This allows flags to be
- * overwritten without compilation (this is normally accomplished with the
- * compiler's "define" flag).
+ * In uncompiled mode, {@code CLOSURE_UNCOMPILED_DEFINES} may be defined before
+ * loading base.js.  If a key is defined in {@code CLOSURE_UNCOMPILED_DEFINES},
+ * {@code goog.define} will use the value instead of the default value.  This
+ * allows flags to be overwritten without compilation (this is normally
+ * accomplished with the compiler's "define" flag).
  *
  * Example:
  * <pre>
- *   var CLOSURE_DEFINES = {'goog.DEBUG', false};
+ *   var CLOSURE_UNCOMPILED_DEFINES = {'goog.DEBUG': false};
+ * </pre>
+ *
+ * @type {Object.<string, (string|number|boolean)>|undefined}
+ */
+goog.global.CLOSURE_UNCOMPILED_DEFINES;
+
+
+/**
+ * A hook for overriding the define values in uncompiled or compiled mode,
+ * like CLOSURE_UNCOMPILED_DEFINES but effective in compiled code.  In
+ * uncompiled code CLOSURE_UNCOMPILED_DEFINES takes precedence.
+ *
+ * Also unlike CLOSURE_UNCOMPILED_DEFINES the values must be number, boolean or
+ * string literals or the compiler will emit an error.
+ *
+ * While any @define value may be set, only those set with goog.define will be
+ * effective for uncompiled code.
+ *
+ * Example:
+ * <pre>
+ *   var CLOSURE_DEFINES = {'goog.DEBUG': false};
  * </pre>
  *
  * @type {Object.<string, (string|number|boolean)>|undefined}
@@ -109,9 +130,10 @@ goog.exportPath_ = function(name, opt_object, opt_objectToExportTo) {
 
 /**
  * Defines a named value. In uncompiled mode, the value is retreived from
- * CLOSURE_DEFINES if the object is defined and has the property specified,
- * and otherwise used the defined defaultValue. When compiled, the default
- * can be overridden using compiler command-line options.
+ * CLOSURE_DEFINES or CLOSURE_UNCOMPILED_DEFINES if the object is defined and
+ * has the property specified, and otherwise used the defined defaultValue.
+ * When compiled, the default can be overridden using compiler command-line
+ * options.
  *
  * @param {string} name The distinguished name to provide.
  * @param {string|number|boolean} defaultValue
@@ -119,8 +141,13 @@ goog.exportPath_ = function(name, opt_object, opt_objectToExportTo) {
 goog.define = function(name, defaultValue) {
   var value = defaultValue;
   if (!COMPILED) {
-    if (goog.global.CLOSURE_DEFINES && Object.prototype.hasOwnProperty.call(
-        goog.global.CLOSURE_DEFINES, name)) {
+    if (goog.global.CLOSURE_UNCOMPILED_DEFINES &&
+        Object.prototype.hasOwnProperty.call(
+            goog.global.CLOSURE_UNCOMPILED_DEFINES, name)) {
+      value = goog.global.CLOSURE_UNCOMPILED_DEFINES[name];
+    } else if (goog.global.CLOSURE_DEFINES &&
+        Object.prototype.hasOwnProperty.call(
+            goog.global.CLOSURE_DEFINES, name)) {
       value = goog.global.CLOSURE_DEFINES[name];
     }
   }
@@ -176,9 +203,20 @@ goog.define('goog.TRUSTED_SITE', true);
 
 
 /**
+ * @define {boolean} Whether a project is expected to be running in strict mode.
+ *
+ * This define can be used to trigger alternate implementations compatible with
+ * running in EcmaScript Strict mode or warn about unavailable functionality.
+ * See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions_and_function_scope/Strict_mode
+ */
+goog.define('goog.STRICT_MODE_COMPATIBLE', false);
+
+
+/**
  * Creates object stubs for a namespace.  The presence of one or more
  * goog.provide() calls indicate that the file defines the given
- * objects/namespaces.  Build tools also scan for provide/require statements
+ * objects/namespaces.  Provided objects must not be null or undefined.
+ * Build tools also scan for provide/require statements
  * to discern dependencies, build dependency files (see deps.js), etc.
  * @see goog.require
  * @param {string} name Namespace provided by this file in the form
@@ -229,6 +267,25 @@ goog.setTestOnly = function(opt_message) {
 };
 
 
+/**
+ * Forward declares a symbol. This is an indication to the compiler that the
+ * symbol may be used in the source yet is not required and may not be provided
+ * in compilation.
+ *
+ * The most common usage of forward declaration is code that takes a type as a
+ * function parameter but does not need to require it. By forward declaring
+ * instead of requiring, no hard dependency is made, and (if not required
+ * elsewhere) the namespace may never be required and thus, not be pulled
+ * into the JavaScript binary. If it is required elsewhere, it will be type
+ * checked as normal.
+ *
+ *
+ * @param {string} name The namespace to forward declare in the form of
+ *     "goog.package.part".
+ */
+goog.forwardDeclare = function(name) {};
+
+
 if (!COMPILED) {
 
   /**
@@ -239,7 +296,8 @@ if (!COMPILED) {
    * @private
    */
   goog.isProvided_ = function(name) {
-    return !goog.implicitNamespaces_[name] && !!goog.getObjectByName(name);
+    return !goog.implicitNamespaces_[name] &&
+        goog.isDefAndNotNull(goog.getObjectByName(name));
   };
 
   /**
@@ -255,9 +313,10 @@ if (!COMPILED) {
 
 
 /**
- * Returns an object based on its fully qualified external name.  If you are
- * using a compilation pass that renames property names beware that using this
- * function will not find renamed properties.
+ * Returns an object based on its fully qualified external name.  The object
+ * is not found if null or undefined.  If you are using a compilation pass that
+ * renames property names beware that using this function will not find renamed
+ * properties.
  *
  * @param {string} name The fully qualified name.
  * @param {Object=} opt_obj The object within which to look; default is
@@ -428,6 +487,7 @@ goog.global.CLOSURE_NO_DEPS;
  *
  * The function is passed the script source, which is a relative URI. It should
  * return true if the script was imported, false otherwise.
+ * @type {(function(string): boolean)|undefined}
  */
 goog.global.CLOSURE_IMPORT_SCRIPT;
 
@@ -823,7 +883,7 @@ goog.typeOf = function(value) {
  * WARNING: Do not use this to test if an object has a property. Use the in
  * operator instead.  Additionally, this function assumes that the global
  * undefined variable has not been redefined.
- * @param {*} val Variable to test.
+ * @param {?} val Variable to test.
  * @return {boolean} Whether variable is defined.
  */
 goog.isDef = function(val) {
@@ -833,7 +893,7 @@ goog.isDef = function(val) {
 
 /**
  * Returns true if the specified value is null.
- * @param {*} val Variable to test.
+ * @param {?} val Variable to test.
  * @return {boolean} Whether variable is null.
  */
 goog.isNull = function(val) {
@@ -843,7 +903,7 @@ goog.isNull = function(val) {
 
 /**
  * Returns true if the specified value is defined and not null.
- * @param {*} val Variable to test.
+ * @param {?} val Variable to test.
  * @return {boolean} Whether variable is defined and not null.
  */
 goog.isDefAndNotNull = function(val) {
@@ -854,7 +914,7 @@ goog.isDefAndNotNull = function(val) {
 
 /**
  * Returns true if the specified value is an array.
- * @param {*} val Variable to test.
+ * @param {?} val Variable to test.
  * @return {boolean} Whether variable is an array.
  */
 goog.isArray = function(val) {
@@ -866,7 +926,7 @@ goog.isArray = function(val) {
  * Returns true if the object looks like an array. To qualify as array like
  * the value needs to be either a NodeList or an object with a Number length
  * property.
- * @param {*} val Variable to test.
+ * @param {?} val Variable to test.
  * @return {boolean} Whether variable is an array.
  */
 goog.isArrayLike = function(val) {
@@ -878,7 +938,7 @@ goog.isArrayLike = function(val) {
 /**
  * Returns true if the object looks like a Date. To qualify as Date-like the
  * value needs to be an object and have a getFullYear() function.
- * @param {*} val Variable to test.
+ * @param {?} val Variable to test.
  * @return {boolean} Whether variable is a like a Date.
  */
 goog.isDateLike = function(val) {
@@ -888,7 +948,7 @@ goog.isDateLike = function(val) {
 
 /**
  * Returns true if the specified value is a string.
- * @param {*} val Variable to test.
+ * @param {?} val Variable to test.
  * @return {boolean} Whether variable is a string.
  */
 goog.isString = function(val) {
@@ -898,7 +958,7 @@ goog.isString = function(val) {
 
 /**
  * Returns true if the specified value is a boolean.
- * @param {*} val Variable to test.
+ * @param {?} val Variable to test.
  * @return {boolean} Whether variable is boolean.
  */
 goog.isBoolean = function(val) {
@@ -908,7 +968,7 @@ goog.isBoolean = function(val) {
 
 /**
  * Returns true if the specified value is a number.
- * @param {*} val Variable to test.
+ * @param {?} val Variable to test.
  * @return {boolean} Whether variable is a number.
  */
 goog.isNumber = function(val) {
@@ -918,7 +978,7 @@ goog.isNumber = function(val) {
 
 /**
  * Returns true if the specified value is a function.
- * @param {*} val Variable to test.
+ * @param {?} val Variable to test.
  * @return {boolean} Whether variable is a function.
  */
 goog.isFunction = function(val) {
@@ -929,7 +989,7 @@ goog.isFunction = function(val) {
 /**
  * Returns true if the specified value is an object.  This includes arrays and
  * functions.
- * @param {*} val Variable to test.
+ * @param {?} val Variable to test.
  * @return {boolean} Whether variable is an object.
  */
 goog.isObject = function(val) {
@@ -959,6 +1019,19 @@ goog.getUid = function(obj) {
   // and SubClass.prototype will be the same.
   return obj[goog.UID_PROPERTY_] ||
       (obj[goog.UID_PROPERTY_] = ++goog.uidCounter_);
+};
+
+
+/**
+ * Whether the given object is alreay assigned a unique ID.
+ *
+ * This does not modify the object.
+ *
+ * @param {Object} obj The object to check.
+ * @return {boolean} Whether there an assigned unique id for the object.
+ */
+goog.hasUid = function(obj) {
+  return !!obj[goog.UID_PROPERTY_];
 };
 
 
@@ -1161,9 +1234,10 @@ goog.bind = function(fn, selfObj, var_args) {
 goog.partial = function(fn, var_args) {
   var args = Array.prototype.slice.call(arguments, 1);
   return function() {
-    // Prepend the bound arguments to the current arguments.
-    var newArgs = Array.prototype.slice.call(arguments);
-    newArgs.unshift.apply(newArgs, args);
+    // Clone the array (with slice()) and append additional arguments
+    // to the existing arguments.
+    var newArgs = args.slice();
+    newArgs.push.apply(newArgs, arguments);
     return fn.apply(this, newArgs);
   };
 };
@@ -1419,7 +1493,7 @@ goog.getMsg = function(str, opt_values) {
  * This is useful when introducing a new message that has not yet been
  * translated into all languages.
  *
- * This function is a compiler primtive. Must be used in the form:
+ * This function is a compiler primitive. Must be used in the form:
  * <code>var x = goog.getMsgWithFallback(MSG_A, MSG_B);</code>
  * where MSG_A and MSG_B were initialized with goog.getMsg.
  *
@@ -1509,6 +1583,28 @@ goog.inherits = function(childCtor, parentCtor) {
   childCtor.prototype = new tempCtor();
   /** @override */
   childCtor.prototype.constructor = childCtor;
+
+  /**
+   * Calls superclass constructor/method.
+   *
+   * This function is only available if you use goog.inherits to
+   * express inheritance relationships between classes.
+   *
+   * NOTE: This is a replacement for goog.base and for superClass_
+   * property defined in childCtor.
+   *
+   * @param {!Object} me Should always be "this".
+   * @param {string} methodName The method name to call. Calling
+   *     superclass constructor can be done with the special string
+   *     'constructor'.
+   * @param {...*} var_args The arguments to pass to superclass
+   *     method/constructor.
+   * @return {*} The return value of the superclass method/constructor.
+   */
+  childCtor.base = function(me, methodName, var_args) {
+    var args = Array.prototype.slice.call(arguments, 2);
+    return parentCtor.prototype[methodName].apply(me, args);
+  };
 };
 
 
@@ -1516,7 +1612,7 @@ goog.inherits = function(childCtor, parentCtor) {
  * Call up to the superclass.
  *
  * If this is called from a constructor, then this calls the superclass
- * contsructor with arguments 1-N.
+ * constructor with arguments 1-N.
  *
  * If this is called from a prototype method, then you must pass the name of the
  * method as the second argument to this function. If you do not, you will get a
@@ -1534,16 +1630,16 @@ goog.inherits = function(childCtor, parentCtor) {
  * @param {*=} opt_methodName The method name if calling a super method.
  * @param {...*} var_args The rest of the arguments.
  * @return {*} The return value of the superclass method.
+ * @suppress {es5Strict} This method can not be used in strict mode, but
+ *     all Closure Library consumers must depend on this file.
  */
 goog.base = function(me, opt_methodName, var_args) {
   var caller = arguments.callee.caller;
 
-  if (goog.DEBUG) {
-    if (!caller) {
-      throw Error('arguments.caller not defined.  goog.base() expects not ' +
-                  'to be running in strict mode. See ' +
-                  'http://www.ecma-international.org/ecma-262/5.1/#sec-C');
-    }
+  if (goog.STRICT_MODE_COMPATIBLE || (goog.DEBUG && !caller)) {
+    throw Error('arguments.caller not defined.  goog.base() cannot be used ' +
+                'with strict mode code. See ' +
+                'http://www.ecma-international.org/ecma-262/5.1/#sec-C');
   }
 
   if (caller.superClass_) {

@@ -43,7 +43,7 @@ goog.require('goog.window');
  * @extends {goog.editor.plugins.AbstractBubblePlugin}
  */
 goog.editor.plugins.LinkBubble = function(var_args) {
-  goog.base(this);
+  goog.editor.plugins.LinkBubble.base(this, 'constructor');
 
   /**
    * List of extra actions supported by the bubble.
@@ -415,7 +415,7 @@ goog.editor.plugins.LinkBubble.prototype.isInvalidUrl = goog.functions.FALSE;
 
 /**
  * Gets the text to display for a link, based on the type of link
- * @return {Object} Returns an object of the form:
+ * @return {!Object} Returns an object of the form:
  *     {linkText: displayTextForLinkTarget, valid: ifTheLinkIsValid}.
  * @private
  */
@@ -551,6 +551,7 @@ goog.editor.plugins.LinkBubble.prototype.isSafeSchemeToOpen_ =
  * @param {function(string):void} actionFn Action function to run when the
  *     action is clicked.  Takes the current target URL as a parameter.
  * @constructor
+ * @final
  */
 goog.editor.plugins.LinkBubble.Action = function(spanId, linkId, message,
     toShowFn, actionFn) {
