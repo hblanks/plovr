@@ -1,0 +1,16 @@
+Package: plovr
+Version: 20140417-1
+Architecture: all
+Maintainer: Hunter Blanks <hblanks@artifex.org>
+Installed-Size: 17099
+Depends: java-common
+Section: misc
+Priority: extra
+Homepage: https://github.com/hblanks/plovr/
+Description: build tool for closure compiler & library
+ Per http://plovr.com/:
+ .
+ plovr is a build tool that dynamically recompiles JavaScript and Closure Template code. It is designed to simplify Closure development, and to make it more enjoyable.
+ .
+ This package is maintained for debian via a fork at
+ https://github.com/hblanks/plovr/

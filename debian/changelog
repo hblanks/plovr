@@ -1,0 +1,7 @@
+plovr (20140417.1) unstable; urgency=low
+
+  * Initial Release, for commit 27a7ba02.
+  * adds option --base-url for serve command
+  * upgrades closure-library to current commit
+
+ -- Hunter Blanks <hblanks@artifex.org>  Fri, 18 Apr 2014 00:27:31 +0000
