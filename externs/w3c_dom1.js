@@ -116,11 +116,17 @@ DOMImplementation.prototype.hasFeature = function(feature, version) {};
  */
 function Node() {}
 
-/** @override */
-Node.prototype.addEventListener = function(type, listener, useCapture) {};
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
+Node.prototype.addEventListener = function(type, listener, opt_useCapture) {};
 
-/** @override */
-Node.prototype.removeEventListener = function(type, listener, useCapture) {};
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
+Node.prototype.removeEventListener = function(type, listener, opt_useCapture) {};
 
 /** @override */
 Node.prototype.dispatchEvent = function(evt) {};
@@ -138,19 +144,19 @@ Node.prototype.attributes;
 Node.prototype.childNodes;
 
 /**
- * @type {Node?}
+ * @type {Node}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#attribute-firstChild
  */
 Node.prototype.firstChild;
 
 /**
- * @type {Node?}
+ * @type {Node}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#attribute-lastChild
  */
 Node.prototype.lastChild;
 
 /**
- * @type {Node?}
+ * @type {Node}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#attribute-nextSibling
  */
 Node.prototype.nextSibling;
@@ -186,7 +192,7 @@ Node.prototype.ownerDocument;
 Node.prototype.parentNode;
 
 /**
- * @type {Node?}
+ * @type {Node}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#attribute-previousSibling
  */
 Node.prototype.previousSibling;
@@ -200,7 +206,7 @@ Node.prototype.appendChild = function(newChild) {};
 
 /**
  * @param {boolean} deep
- * @return {Node}
+ * @return {!Node}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#method-cloneNode
  * @nosideeffects
  */
@@ -215,15 +221,15 @@ Node.prototype.hasChildNodes = function() {};
 
 /**
  * @param {Node} newChild
- * @param {Node?} refChild
- * @return {Node}
+ * @param {Node} refChild
+ * @return {!Node}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#method-insertBefore
  */
 Node.prototype.insertBefore = function(newChild, refChild) {};
 
 /**
  * @param {Node} oldChild
- * @return {Node}
+ * @return {!Node}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#method-removeChild
  */
 Node.prototype.removeChild = function(oldChild) {};
@@ -231,7 +237,7 @@ Node.prototype.removeChild = function(oldChild) {};
 /**
  * @param {Node} newChild
  * @param {Node} oldChild
- * @return {Node}
+ * @return {!Node}
  * @see http://www.w3.org/TR/1998/REC-DOM-Level-1-19981001/level-one-core.html#method-replaceChild
  */
 Node.prototype.replaceChild = function(newChild, oldChild) {};
@@ -641,6 +647,7 @@ Element.prototype.setAttributeNode = function(newAttr) {};
 // http://www.w3.org/TR/DOM-Level-3-Events/#event-types
 
 /** @type {?function (Event)} */ Element.prototype.onabort;
+/** @type {?function (Event)} */ Element.prototype.onbeforeinput;
 /** @type {?function (Event)} */ Element.prototype.onbeforeunload;
 /** @type {?function (Event)} */ Element.prototype.onblur;
 /** @type {?function (Event)} */ Element.prototype.onchange;
@@ -656,6 +663,7 @@ Element.prototype.setAttributeNode = function(newAttr) {};
 /** @type {?function (Event)} */ Element.prototype.onfocus;
 /** @type {?function (Event)} */ Element.prototype.onfocusin;
 /** @type {?function (Event)} */ Element.prototype.onfocusout;
+/** @type {?function (Event)} */ Element.prototype.oninput;
 /** @type {?function (Event)} */ Element.prototype.onkeydown;
 /** @type {?function (Event)} */ Element.prototype.onkeypress;
 /** @type {?function (Event)} */ Element.prototype.onkeyup;
@@ -806,11 +814,18 @@ ProcessingInstruction.prototype.target;
  */
 function Window() {}
 
-/** @override */
-Window.prototype.addEventListener = function(type, listener, useCapture) {};
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
+Window.prototype.addEventListener = function(type, listener, opt_useCapture) {};
 
-/** @override */
-Window.prototype.removeEventListener = function(type, listener, useCapture) {};
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
+Window.prototype.removeEventListener = function(type, listener, opt_useCapture)
+    {};
 
 /** @override */
 Window.prototype.dispatchEvent = function(evt) {};

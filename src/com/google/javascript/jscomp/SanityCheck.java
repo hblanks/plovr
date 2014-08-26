@@ -17,6 +17,7 @@
 package com.google.javascript.jscomp;
 
 import com.google.javascript.rhino.Node;
+import java.util.Set;
 
 /**
  * A compiler pass that verifies the structure of the AST conforms
@@ -38,12 +39,18 @@ class SanityCheck implements CompilerPass {
       "----------------------------------------\n" +
       "Actual:\n{1}");
 
+  static final DiagnosticType EXTERN_PROPERTIES_CHANGED =
+      DiagnosticType.error("JSC_EXTERN_PROPERTIES_CHANGED",
+          "Internal compiler error. Extern properties modified.");
+
   private final AbstractCompiler compiler;
+  private final boolean gatherExternsFromTypes;
+  private final AstValidator astValidator;
 
-  private final AstValidator astValidator = new AstValidator();
-
-  SanityCheck(AbstractCompiler compiler) {
+  SanityCheck(AbstractCompiler compiler, boolean gatherExternsFromTypes) {
     this.compiler = compiler;
+    this.gatherExternsFromTypes = gatherExternsFromTypes;
+    this.astValidator = new AstValidator(compiler);
   }
 
   @Override
@@ -52,6 +59,7 @@ class SanityCheck implements CompilerPass {
     sanityCheckNormalization(externs, root);
     sanityCheckCodeGeneration(root);
     sanityCheckVars(externs, root);
+    sanityCheckExternProperties(externs);
   }
 
   /**
@@ -130,5 +138,21 @@ class SanityCheck implements CompilerPass {
     }
 
     compiler.removeChangeHandler(handler);
+  }
+
+  private void sanityCheckExternProperties(Node externs) {
+    Set<String> externProperties = compiler.getExternProperties();
+    if (externProperties == null) {
+      // GatherExternProperties hasn't run yet. Don't report a violation.
+      return;
+    }
+    (new GatherExternProperties(compiler, gatherExternsFromTypes))
+        .process(externs, null);
+    if (!compiler.getExternProperties().equals(externProperties)) {
+      compiler.report(JSError.make(EXTERN_PROPERTIES_CHANGED));
+      // Throw an exception, so that the infrastructure will tell us
+      // which pass violated the sanity check.
+      throw new IllegalStateException("Sanity Check failed");
+    }
   }
 }

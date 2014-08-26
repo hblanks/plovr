@@ -78,6 +78,13 @@ Window.prototype.directories;
  */
 Window.prototype.document;
 
+/**
+ * Evaluates a string of JavaScript code in the context of the specified object.
+ *
+ * @param {string} code
+ * @return {*}
+ * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval
+ */
 Window.prototype.eval;
 
 /**
@@ -266,12 +273,6 @@ Window.prototype.clearTimeout = function(timeoutID) {};
 
 /** @see https://developer.mozilla.org/en/DOM/window.close */
 Window.prototype.close = function() {};
-
-/**
- * @param {*} message
- * @return {boolean}
- */
-Window.prototype.confirm = function(message) {};
 
 /**
  * @param {string} regular
@@ -842,7 +843,7 @@ Element.prototype.nodeValue;
 /** @type {Node} */ Element.prototype.parentNode;
 Element.prototype.prefix;
 /** @type {Node} */ Element.prototype.previousSibling;
-/** @type {CSSStyleDeclaration} */ Element.prototype.style;
+/** @type {!CSSStyleDeclaration} */ Element.prototype.style;
 /**
  * @type {number}
  * @implicitCast
@@ -865,7 +866,7 @@ Element.prototype.appendChild = function(child) {};
 
 /**
  * @override
- * @return {Element}
+ * @return {!Element}
  */
 Element.prototype.cloneNode = function(deep) {};
 
@@ -906,13 +907,17 @@ Element.prototype.normalize = function() {};
 
 /**
  * @param {Node} removedNode
- * @return {Node}
+ * @return {!Node}
  * @override
  */
 Element.prototype.removeChild = function(removedNode) {};
 
-/** @override */
-Element.prototype.removeEventListener = function(type, handler, useCapture) {};
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
+Element.prototype.removeEventListener = function(type, handler, opt_useCapture)
+    {};
 
 /** @override */
 Element.prototype.replaceChild = function(insertedNode, replacedNode) {};
@@ -1031,6 +1036,14 @@ Navigator.prototype.productSub;
  * @see https://developer.mozilla.org/en/Navigator.securityPolicy
  */
 Navigator.prototype.securityPolicy;
+
+/**
+ * @param {string} url
+ * @param {ArrayBufferView|Blob|string|FormData=} opt_data
+ * @return {boolean}
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/navigator.sendBeacon
+ */
+Navigator.prototype.sendBeacon = function(url, opt_data) {};
 
 /**
  * @type {string}

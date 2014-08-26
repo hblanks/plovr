@@ -20,10 +20,11 @@ import com.google.common.collect.Sets;
 import com.google.javascript.jscomp.CompilerOptions.LanguageMode;
 import com.google.javascript.jscomp.ExpressionDecomposer.DecompositionType;
 import com.google.javascript.rhino.Node;
+import com.google.javascript.rhino.Token;
+
 import junit.framework.TestCase;
 
 import java.util.Set;
-
 import javax.annotation.Nullable;
 
 /**
@@ -467,7 +468,8 @@ public class ExpressionDecomposerTest extends TestCase {
     Compiler compiler = getCompiler();
     Set<String> knownConstants = Sets.newHashSet();
     ExpressionDecomposer decomposer = new ExpressionDecomposer(
-        compiler, compiler.getUniqueNameIdSupplier(), knownConstants);
+        compiler, compiler.getUniqueNameIdSupplier(),
+        knownConstants, newScope());
     Node tree = parse(compiler, code);
     assertNotNull(tree);
 
@@ -496,7 +498,8 @@ public class ExpressionDecomposerTest extends TestCase {
       knownConstants = Sets.newHashSet();
     }
     ExpressionDecomposer decomposer = new ExpressionDecomposer(
-        compiler, compiler.getUniqueNameIdSupplier(), knownConstants);
+        compiler, compiler.getUniqueNameIdSupplier(),
+        knownConstants, newScope());
     Node tree = parse(compiler, code);
     assertNotNull(tree);
 
@@ -529,9 +532,9 @@ public class ExpressionDecomposerTest extends TestCase {
     if (compiler.getErrorCount() != 0) {
       String msg = "Error encountered: ";
       for (JSError err : compiler.getErrors()) {
-        msg += err.toString() + "\n";
+        msg += err + "\n";
       }
-      assertTrue(msg, compiler.getErrorCount() == 0);
+      assertEquals(msg, 0, compiler.getErrorCount());
     }
   }
 
@@ -546,7 +549,8 @@ public class ExpressionDecomposerTest extends TestCase {
       knownConstants = Sets.newHashSet();
     }
     ExpressionDecomposer decomposer = new ExpressionDecomposer(
-        compiler, compiler.getUniqueNameIdSupplier(), knownConstants);
+        compiler, compiler.getUniqueNameIdSupplier(),
+        knownConstants, newScope());
     decomposer.setTempNamePrefix("temp");
     decomposer.setResultNamePrefix("result");
     Node expectedRoot = parse(compiler, expectedResult);
@@ -557,7 +561,7 @@ public class ExpressionDecomposerTest extends TestCase {
     assertNotNull("Call to " + fnName + " was not found.", callSite);
 
     DecompositionType result = decomposer.canExposeExpression(callSite);
-    assertTrue(result == DecompositionType.DECOMPOSABLE);
+    assertSame(DecompositionType.DECOMPOSABLE, result);
 
     compiler.resetUniqueNameId();
     decomposer.exposeExpression(callSite);
@@ -589,7 +593,8 @@ public class ExpressionDecomposerTest extends TestCase {
     }
 
     ExpressionDecomposer decomposer = new ExpressionDecomposer(
-        compiler, compiler.getUniqueNameIdSupplier(), knownConstants);
+        compiler, compiler.getUniqueNameIdSupplier(),
+        knownConstants, newScope());
     decomposer.setTempNamePrefix("temp");
     decomposer.setResultNamePrefix("result");
     Node expectedRoot = parse(compiler, expectedResult);
@@ -661,5 +666,9 @@ public class ExpressionDecomposerTest extends TestCase {
     Node n = Normalize.parseAndNormalizeTestCode(compiler, js);
     assertEquals(0, compiler.getErrorCount());
     return n;
+  }
+
+  private Scope newScope() {
+    return Scope.createGlobalScope(new Node(Token.SCRIPT));
   }
 }

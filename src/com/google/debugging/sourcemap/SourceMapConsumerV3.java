@@ -18,6 +18,7 @@ package com.google.debugging.sourcemap;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.debugging.sourcemap.Base64VLQ.CharIterator;
 import com.google.debugging.sourcemap.proto.Mapping.OriginalMapping;
 import com.google.debugging.sourcemap.proto.Mapping.OriginalMapping.Builder;
@@ -32,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -52,6 +54,9 @@ public class SourceMapConsumerV3 implements SourceMapConsumer,
   /** originalFile path ==> original line ==> target mappings */
   private Map<String, Map<Integer, Collection<OriginalMapping>>>
       reverseSourceMapping;
+  private String sourceRoot;
+  private Map<String, Object> extensions = Maps.newLinkedHashMap();
+
 
   public SourceMapConsumerV3() {
 
@@ -104,9 +109,9 @@ public class SourceMapConsumerV3 implements SourceMapConsumer,
         throw new SourceMapParseException("Unknown version: " + version);
       }
 
-      String file = sourceMapRoot.getString("file");
-      if (file.isEmpty()) {
-        throw new SourceMapParseException("File entry is missing or empty");
+      if (sourceMapRoot.has("file")
+          && sourceMapRoot.getString("file").isEmpty()) {
+        throw new SourceMapParseException("File entry is empty");
       }
 
       if (sourceMapRoot.has("sections")) {
@@ -115,13 +120,30 @@ public class SourceMapConsumerV3 implements SourceMapConsumer,
         return;
       }
 
-      lineCount = sourceMapRoot.getInt("lineCount");
+      lineCount = sourceMapRoot.has("lineCount")
+          ? sourceMapRoot.getInt("lineCount") : -1;
       String lineMap = sourceMapRoot.getString("mappings");
 
       sources = getJavaStringArray(sourceMapRoot.getJSONArray("sources"));
       names = getJavaStringArray(sourceMapRoot.getJSONArray("names"));
 
-      lines = Lists.newArrayListWithCapacity(lineCount);
+      if (lineCount >= 0) {
+        lines = Lists.newArrayListWithCapacity(lineCount);
+      } else {
+        lines = Lists.newArrayList();
+      }
+
+      if (sourceMapRoot.has("sourceRoot")) {
+        sourceRoot = sourceMapRoot.getString("sourceRoot");
+      }
+
+      @SuppressWarnings("unchecked")
+      Iterator<String> keys = sourceMapRoot.keys();
+      for (String key : Lists.newArrayList(keys)) {
+        if (key.startsWith("x_")) {
+          extensions.put(key, sourceMapRoot.get(key));
+        }
+      }
 
       new MappingBuilder(lineMap).build();
     } catch (JSONException ex) {
@@ -223,7 +245,7 @@ public class SourceMapConsumerV3 implements SourceMapConsumer,
 
     ArrayList<Entry> entries = lines.get(lineNumber);
     // No empty lists.
-    Preconditions.checkState(entries.size() > 0);
+    Preconditions.checkState(!entries.isEmpty());
     if (entries.get(0).getGeneratedColumn() > column) {
       return getPreviousMapping(lineNumber);
     }
@@ -266,6 +288,21 @@ public class SourceMapConsumerV3 implements SourceMapConsumer,
     }
   }
 
+  public String getSourceRoot(){
+    return this.sourceRoot;
+  }
+
+  /**
+   * Returns all extensions and their values (which can be any json value)
+   * in a Map object.
+   *
+   * @return The extension list
+   */
+  public Map<String, Object> getExtensions(){
+    return this.extensions;
+  }
+
+
   private String[] getJavaStringArray(JSONArray array) throws JSONException {
     int len = array.length();
     String[] result = new String[len];
@@ -291,24 +328,16 @@ public class SourceMapConsumerV3 implements SourceMapConsumer,
 
     void build() {
       int [] temp = new int[MAX_ENTRY_VALUES];
-      ArrayList<Entry> entries = new ArrayList<Entry>();
+      ArrayList<Entry> entries = new ArrayList<>();
       while (content.hasNext()) {
         // ';' denotes a new line.
         if (tryConsumeToken(';')) {
-          // The line is complete, store the result for the line,
-          // null if the line is empty.
-          ArrayList<Entry> result;
-          if (entries.size() > 0) {
-            result = entries;
+          // The line is complete, store the result
+          completeLine(entries);
+          if (!entries.isEmpty()) {
             // A new array list for the next line.
-            entries = new ArrayList<Entry>();
-          } else {
-            result = null;
+            entries = new ArrayList<>();
           }
-          lines.add(result);
-          entries.clear();
-          line++;
-          previousCol = 0;
         } else {
           // grab the next entry for the current line.
           int entryValues = 0;
@@ -325,13 +354,31 @@ public class SourceMapConsumerV3 implements SourceMapConsumer,
           tryConsumeToken(',');
         }
       }
+
+      // Some source map generator (e.g.UglifyJS) generates lines without
+      // a trailing line separator. So add the rest of the content.
+      if (!entries.isEmpty()) {
+        completeLine(entries);
+      }
+    }
+
+    private void completeLine(ArrayList<Entry> entries) {
+      // The line is complete, store the result for the line,
+      // null if the line is empty.
+      if (!entries.isEmpty()) {
+        lines.add(entries);
+      } else {
+        lines.add(null);
+      }
+      line++;
+      previousCol = 0;
     }
 
     /**
      * Sanity check the entry.
      */
     private void validateEntry(Entry entry) {
-      Preconditions.checkState(line < lineCount);
+      Preconditions.checkState((lineCount < 0) || (line < lineCount));
       Preconditions.checkState(entry.getSourceFileId() == UNMAPPED
           || entry.getSourceFileId() < sources.length);
       Preconditions.checkState(entry.getNameId() == UNMAPPED
@@ -501,8 +548,7 @@ public class SourceMapConsumerV3 implements SourceMapConsumer,
    * OriginalMappings.
    */
   private void createReverseMapping() {
-    reverseSourceMapping =
-        new HashMap<String, Map<Integer, Collection<OriginalMapping>>>();
+    reverseSourceMapping = new HashMap<>();
 
     for (int targetLine = 0; targetLine < lines.size(); targetLine++) {
       ArrayList<Entry> entries = lines.get(targetLine);

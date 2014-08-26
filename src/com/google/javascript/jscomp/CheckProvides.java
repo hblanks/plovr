@@ -110,6 +110,11 @@ class CheckProvides implements HotSwapCompilerPass {
         String ctor = ctorEntry.getKey();
         int index = -1;
         boolean found = false;
+
+        if (ctor.startsWith("$jscomp.scope.")) {
+          continue;
+        }
+
         do {
           index = ctor.indexOf('.', index + 1);
           String provideKey = index == -1 ? ctor : ctor.substring(0, index);
@@ -122,7 +127,7 @@ class CheckProvides implements HotSwapCompilerPass {
         if (!found) {
           Node n = ctorEntry.getValue();
           compiler.report(
-              JSError.make(n.getSourceFileName(), n,
+              JSError.make(n,
                   checkLevel, MISSING_PROVIDE_WARNING, ctorEntry.getKey()));
         }
       }

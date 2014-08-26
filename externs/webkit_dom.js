@@ -207,8 +207,14 @@ Console.prototype.clear = function() {};
 /** @type {MemoryInfo} */
 Console.prototype.memory;
 
-/** @type {Console} */
+/** @type {!Console} */
 Window.prototype.console;
+
+/**
+ * @type {!Console}
+ * @suppress {duplicate}
+ */
+var console;
 
 /**
  * @type {number}

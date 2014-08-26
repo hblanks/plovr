@@ -48,6 +48,9 @@ class RhinoErrorReporter {
   static final DiagnosticType DUPLICATE_PARAM =
       DiagnosticType.error("JSC_DUPLICATE_PARAM", "Parse error. {0}");
 
+  static final DiagnosticType INVALID_PARAM =
+      DiagnosticType.warning("JSC_INVALID_PARAM", "Parse error. {0}");
+
   static final DiagnosticType BAD_JSDOC_ANNOTATION =
       DiagnosticType.warning("JSC_BAD_JSDOC_ANNOTATION", "Parse error. {0}");
 
@@ -66,6 +69,15 @@ class RhinoErrorReporter {
   static final DiagnosticType PARSE_TREE_TOO_DEEP =
       DiagnosticType.error("PARSE_TREE_TOO_DEEP",
           "Parse tree too deep.");
+
+  static final DiagnosticType INVALID_OCTAL_LITERAL =
+      DiagnosticType.warning("INVALID_OCTAL_LITERAL",
+          "This style of octal literal is not supported in strict mode.");
+
+  static final DiagnosticType ES6_FEATURE =
+      DiagnosticType.error("ES6_FEATURE",
+          "{0}. Use --language_in=ECMASCRIPT6 or ECMASCRIPT6_STRICT " +
+          "to enable ES6 features.");
 
   // A map of Rhino messages to their DiagnosticType.
   private final Map<Pattern, DiagnosticType> typeMap;
@@ -87,15 +99,15 @@ class RhinoErrorReporter {
     typeMap = ImmutableMap.<Pattern, DiagnosticType>builder()
         // Trailing comma
         .put(replacePlaceHolders(
-            com.google.javascript.rhino.head.ScriptRuntime.getMessage0(
-                "msg.extra.trailing.comma")),
+            "Trailing comma is not legal in an ECMA-262 object initializer"),
             TRAILING_COMMA)
 
         // Duplicate parameter
         .put(replacePlaceHolders(
-            com.google.javascript.rhino.head.ScriptRuntime.getMessage0(
-                "msg.dup.parms")),
+            "Duplicate parameter name \"{0}\""),
             DUPLICATE_PARAM)
+
+        .put(Pattern.compile("^invalid param name.*"), INVALID_PARAM)
 
         // Unknown @annotations.
         .put(replacePlaceHolders(
@@ -117,15 +129,17 @@ class RhinoErrorReporter {
 
         // Parse tree too deep.
         .put(replacePlaceHolders(
-            com.google.javascript.rhino.head.ScriptRuntime.getMessage0(
-                "msg.too.deep.parser.recursion")),
+            "Too deep recursion while parsing"),
             PARSE_TREE_TOO_DEEP)
-        .build();
-  }
 
-  public static com.google.javascript.rhino.head.ErrorReporter
-      forNewRhino(AbstractCompiler compiler) {
-    return new NewRhinoErrorReporter(compiler);
+        // Octal literals
+        .put(Pattern.compile("^Octal .*literal.*"),
+            INVALID_OCTAL_LITERAL)
+
+        .put(Pattern.compile("^this language feature is only supported in es6 mode.*"),
+            ES6_FEATURE)
+
+        .build();
   }
 
   public static ErrorReporter forOldRhino(AbstractCompiler compiler) {
@@ -185,64 +199,6 @@ class RhinoErrorReporter {
     public void warning(String message, String sourceName, int line,
         int lineOffset) {
       super.warningAtLine(message, sourceName, line, lineOffset);
-    }
-  }
-
-  private static class NewRhinoErrorReporter extends RhinoErrorReporter
-      implements com.google.javascript.rhino.head.ast.IdeErrorReporter {
-
-    private NewRhinoErrorReporter(AbstractCompiler compiler) {
-      super(compiler);
-    }
-
-    @Override
-    public com.google.javascript.rhino.head.EvaluatorException
-        runtimeError(String message, String sourceName, int line,
-            String lineSource, int lineOffset) {
-      DiagnosticType type = mapError(message);
-      if (type != null) {
-        super.errorAtLine(message, sourceName, line, lineOffset);
-      }
-      return new com.google.javascript.rhino.head.EvaluatorException(
-          message, sourceName, line, lineSource, lineOffset);
-    }
-
-    @Override
-    public void error(String message, String sourceName, int line,
-        String sourceLine, int lineOffset) {
-      super.errorAtLine(message, sourceName, line, lineOffset);
-    }
-
-    @Override
-    public void error(String message, String sourceName,
-        int offset, int length) {
-      int line = 1;
-      int column = 0;
-      SourceFile file = this.compiler.getSourceFileByName(sourceName);
-      if (file != null) {
-        line = file.getLineOfOffset(offset);
-        column = file.getColumnOfOffset(offset);
-      }
-      super.errorAtLine(message, sourceName, line, column);
-    }
-
-    @Override
-    public void warning(String message, String sourceName, int line,
-        String sourceLine, int lineOffset) {
-      super.warningAtLine(message, sourceName, line, lineOffset);
-    }
-
-    @Override
-    public void warning(String message, String sourceName,
-        int offset, int length) {
-      int line = 1;
-      int column = 0;
-      SourceFile file = this.compiler.getSourceFileByName(sourceName);
-      if (file != null) {
-        line = file.getLineOfOffset(offset);
-        column = file.getColumnOfOffset(offset);
-      }
-      super.errorAtLine(message, sourceName, line, column);
     }
   }
 }

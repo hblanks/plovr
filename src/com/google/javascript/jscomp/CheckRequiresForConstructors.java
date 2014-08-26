@@ -16,8 +16,7 @@
 
 package com.google.javascript.jscomp;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import com.google.common.base.Splitter;
 import com.google.javascript.jscomp.NodeTraversal.Callback;
 import com.google.javascript.rhino.JSDocInfo;
 import com.google.javascript.rhino.JSTypeExpression;
@@ -25,6 +24,8 @@ import com.google.javascript.rhino.Node;
 import com.google.javascript.rhino.Token;
 import com.google.javascript.rhino.jstype.JSType;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -79,7 +80,7 @@ class CheckRequiresForConstructors implements HotSwapCompilerPass {
   // Return the shortest prefix of the className that refers to a class,
   // or null if no part refers to a class.
   private static String getOutermostClassName(String className) {
-    for (String part : className.split("\\.")) {
+    for (String part : Splitter.on('.').split(className)) {
       if (isClassName(part)) {
         return className.substring(0, className.indexOf(part) +
                                    part.length());
@@ -95,9 +96,9 @@ class CheckRequiresForConstructors implements HotSwapCompilerPass {
    *
    */
   private class CheckRequiresForConstructorsCallback implements Callback {
-    private final List<String> constructors = Lists.newArrayList();
-    private final List<String> requires = Lists.newArrayList();
-    private final List<Node> newNodes = Lists.newArrayList();
+    private final Set<String> constructors = new HashSet<>();
+    private final Set<String> requires = new HashSet<>();
+    private final List<Node> newNodes = new ArrayList<>();
 
     @Override
     public boolean shouldTraverse(NodeTraversal t, Node n, Node parent) {
@@ -130,7 +131,7 @@ class CheckRequiresForConstructors implements HotSwapCompilerPass {
     }
 
     private void visitScriptNode(NodeTraversal t) {
-      Set<String> classNames = Sets.newHashSet();
+      Set<String> classNames = new HashSet<>();
       for (Node node : newNodes) {
         String className = node.getFirstChild().getQualifiedName();
         String outermostClassName = getOutermostClassName(className);

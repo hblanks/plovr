@@ -71,7 +71,7 @@ class ReplaceStrings extends AbstractPostOrderCallback
   /**
    * Describes a function to look for a which parameters to replace.
    */
-  private class Config {
+  private static class Config {
     // TODO(johnlenz): Support name "groups" so that unrelated strings can
     // reuse strings.  For example, event-id can reuse the names used for logger
     // classes.
@@ -88,7 +88,7 @@ class ReplaceStrings extends AbstractPostOrderCallback
   /**
    * Describes a replacement that occurred.
    */
-  class Result {
+  static class Result {
     // The original message with non-static content replaced with
     // {@code placeholderToken}.
     public final String original;
@@ -108,7 +108,7 @@ class ReplaceStrings extends AbstractPostOrderCallback
   }
 
   /** Represent a source location where a replacement occurred. */
-  class Location {
+  static class Location {
     public final String sourceFile;
     public final int line;
     public final int column;
@@ -221,7 +221,14 @@ class ReplaceStrings extends AbstractPostOrderCallback
           Node rhs = calledFn.getLastChild();
           if (rhs.isName() || rhs.isString()) {
             String methodName = rhs.getString();
-            Collection<String> classes = methods.get(methodName);
+            String originalMethodName =
+                (String) rhs.getParent().getProp(Node.ORIGINALNAME_PROP);
+            Collection<String> classes;
+            if (originalMethodName != null) {
+              classes = methods.get(originalMethodName);
+            } else {
+              classes = methods.get(methodName);
+            }
             if (classes != null) {
               Node lhs = calledFn.getFirstChild();
               if (lhs.getJSType() != null) {
@@ -323,7 +330,7 @@ class ReplaceStrings extends AbstractPostOrderCallback
       case Token.NAME:
         // If the referenced variable is a constant, use its value.
         Scope.Var var = t.getScope().getVar(expr.getString());
-        if (var != null && var.isConst()) {
+        if (var != null && var.isInferredConst()) {
           Node value = var.getInitialValue();
           if (value != null && value.isString()) {
             key = value.getString();
@@ -407,7 +414,7 @@ class ReplaceStrings extends AbstractPostOrderCallback
   /**
    * From a provide name extract the method name.
    */
-  private String getMethodFromDeclarationName(String fullDeclarationName) {
+  private static String getMethodFromDeclarationName(String fullDeclarationName) {
     String[] parts = fullDeclarationName.split("\\.prototype\\.");
     Preconditions.checkState(parts.length == 1 || parts.length == 2);
     if (parts.length == 2) {
@@ -419,7 +426,7 @@ class ReplaceStrings extends AbstractPostOrderCallback
   /**
    * From a provide name extract the class name.
    */
-  private String getClassFromDeclarationName(String fullDeclarationName) {
+  private static String getClassFromDeclarationName(String fullDeclarationName) {
     String[] parts = fullDeclarationName.split("\\.prototype\\.");
     Preconditions.checkState(parts.length == 1 || parts.length == 2);
     if (parts.length == 2) {

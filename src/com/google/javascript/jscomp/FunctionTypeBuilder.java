@@ -25,6 +25,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultiset;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
@@ -46,6 +47,7 @@ import com.google.javascript.rhino.jstype.TemplateType;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import javax.annotation.Nullable;
@@ -252,6 +254,9 @@ final class FunctionTypeBuilder {
       return this;
     }
 
+    // Propagate the template types, if they exist.
+    templateTypeNames = oldType.getTemplateTypeMap().getTemplateKeys();
+
     returnType = oldType.getReturnType();
     returnTypeInferred = oldType.isReturnTypeInferred();
     if (paramsParent == null) {
@@ -308,11 +313,18 @@ final class FunctionTypeBuilder {
 
   /**
    * Infer the return type from JSDocInfo.
+   * @param fromInlineDoc Indicates whether return type is inferred from inline
+   * doc attached to function name
    */
-  FunctionTypeBuilder inferReturnType(@Nullable JSDocInfo info) {
-    if (info != null && info.hasReturnType()) {
-      returnType = info.getReturnType().evaluate(scope, typeRegistry);
-      returnTypeInferred = false;
+  FunctionTypeBuilder inferReturnType(
+      @Nullable JSDocInfo info, boolean fromInlineDoc) {
+    if (info != null) {
+      JSTypeExpression returnTypeExpr =
+          fromInlineDoc ? info.getType() : info.getReturnType();
+      if (returnTypeExpr != null) {
+        returnType = returnTypeExpr.evaluate(scope, typeRegistry);
+        returnTypeInferred = false;
+      }
     }
 
     return this;
@@ -367,7 +379,7 @@ final class FunctionTypeBuilder {
       if (info.getImplementedInterfaceCount() > 0) {
         if (isConstructor) {
           implementedInterfaces = Lists.newArrayList();
-          Set<JSType> baseInterfaces = new HashSet<JSType>();
+          Set<JSType> baseInterfaces = new HashSet<>();
           for (JSTypeExpression t : info.getImplementedInterfaces()) {
             JSType maybeInterType = t.evaluate(scope, typeRegistry);
 
@@ -576,14 +588,29 @@ final class FunctionTypeBuilder {
    */
   FunctionTypeBuilder inferTemplateTypeName(
       @Nullable JSDocInfo info, JSType ownerType) {
-    if (info != null &&  !info.getTemplateTypeNames().isEmpty()) {
+    // NOTE: these template type names may override a list
+    // of inherited ones from an overridden function.
+    if (info != null) {
       ImmutableList.Builder<TemplateType> builder = ImmutableList.builder();
-      for (String key : info.getTemplateTypeNames()) {
-        builder.add(typeRegistry.createTemplateType(key));
+      ImmutableList<String> infoTemplateTypeNames =
+          info.getTemplateTypeNames();
+      ImmutableMap<String, Node> infoTypeTransformations =
+          info.getTypeTransformations();
+      if (!infoTemplateTypeNames.isEmpty()) {
+        for (String key : infoTemplateTypeNames) {
+          builder.add(typeRegistry.createTemplateType(key));
+        }
       }
-      templateTypeNames = builder.build();
-    } else {
-      templateTypeNames = ImmutableList.of();
+      if (!infoTypeTransformations.isEmpty()) {
+        for (Entry<String, Node> entry : infoTypeTransformations.entrySet()) {
+          builder.add(typeRegistry.createTemplateTypeWithTransformation(
+              entry.getKey(), entry.getValue()));
+        }
+      }
+      if (!infoTemplateTypeNames.isEmpty()
+          || !infoTypeTransformations.isEmpty()) {
+        templateTypeNames = builder.build();
+      }
     }
 
     ImmutableList<TemplateType> keys = templateTypeNames;
@@ -778,11 +805,11 @@ final class FunctionTypeBuilder {
   }
 
   private void reportWarning(DiagnosticType warning, String ... args) {
-    compiler.report(JSError.make(sourceName, errorRoot, warning, args));
+    compiler.report(JSError.make(errorRoot, warning, args));
   }
 
   private void reportError(DiagnosticType error, String ... args) {
-    compiler.report(JSError.make(sourceName, errorRoot, error, args));
+    compiler.report(JSError.make(errorRoot, error, args));
   }
 
   /**
@@ -802,7 +829,7 @@ final class FunctionTypeBuilder {
    * care of most scope-declaring.
    */
   private Scope getScopeDeclaredIn() {
-    int dotIndex = fnName.indexOf(".");
+    int dotIndex = fnName.indexOf('.');
     if (dotIndex != -1) {
       String rootVarName = fnName.substring(0, dotIndex);
       Var rootVar = scope.getVar(rootVarName);

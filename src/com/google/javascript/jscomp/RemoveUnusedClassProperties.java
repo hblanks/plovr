@@ -38,17 +38,17 @@ import java.util.Set;
 class RemoveUnusedClassProperties
     implements CompilerPass, NodeTraversal.Callback {
   final AbstractCompiler compiler;
-  private boolean inExterns;
   private Set<String> used = Sets.newHashSet();
   private List<Node> candidates = Lists.newArrayList();
 
   RemoveUnusedClassProperties(AbstractCompiler compiler) {
     this.compiler = compiler;
+    used.addAll(compiler.getExternProperties());
   }
 
   @Override
   public void process(Node externs, Node root) {
-    NodeTraversal.traverseRoots(compiler, this, externs, root);
+    NodeTraversal.traverse(compiler, root, this);
     removeUnused();
   }
 
@@ -78,9 +78,6 @@ class RemoveUnusedClassProperties
 
   @Override
   public boolean shouldTraverse(NodeTraversal t, Node n, Node parent) {
-    if (n.isScript()) {
-      this.inExterns = n.getStaticSourceFile().isExtern();
-    }
     return true;
   }
 
@@ -89,14 +86,23 @@ class RemoveUnusedClassProperties
      switch (n.getType()) {
        case Token.GETPROP: {
          String propName = n.getLastChild().getString();
-         if (inExterns || isPinningPropertyUse(n)) {
+         if (compiler.getCodingConvention().isExported(propName)
+             || isPinningPropertyUse(n)
+             || !isKnownClassProperty(n)) {
            used.add(propName);
          } else {
            // This is a definition of a property but it is only removable
            // if it is defined on "this".
-           if (n.getFirstChild().isThis()) {
-             candidates.add(n);
-           }
+           candidates.add(n);
+         }
+         break;
+       }
+
+       case Token.OBJECTLIT: {
+         // Assume any object literal definition might be a reflection on the
+         // class property.
+         for (Node c : n.children()) {
+           used.add(c.getString());
          }
          break;
        }
@@ -116,10 +122,18 @@ class RemoveUnusedClassProperties
      }
   }
 
+  private static boolean isKnownClassProperty(Node n) {
+    Preconditions.checkState(n.isGetProp());
+    Node target = n.getFirstChild();
+    return target.isThis()
+        || (target.isGetProp()
+            && target.getLastChild().getString().equals("prototype"));
+  }
+
   /**
    * @return Whether the property is used in a way that prevents its removal.
    */
-  private boolean isPinningPropertyUse(Node n) {
+  private static boolean isPinningPropertyUse(Node n) {
     // Rather than looking for cases that are uses, we assume all references are
     // pinning uses unless they are:
     //  - a simple assignment (x.a = 1)
