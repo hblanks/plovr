@@ -54,11 +54,11 @@ class CreateSyntheticBlocks implements CompilerPass {
   /**
    * Markers can be nested.
    */
-  private final Deque<Node> markerStack = new ArrayDeque<Node>();
+  private final Deque<Node> markerStack = new ArrayDeque<>();
 
   private final List<Marker> validMarkers = Lists.newArrayList();
 
-  private class Marker {
+  private static class Marker {
     final Node startMarker;
     final Node endMarker;
     public Marker(Node startMarker, Node endMarker) {
@@ -82,9 +82,7 @@ class CreateSyntheticBlocks implements CompilerPass {
     // Complain about any unmatched markers.
     for (Node node : markerStack) {
       compiler.report(
-          JSError.make(NodeUtil.getSourceName(node),
-          node,
-          UNMATCHED_START_MARKER, startMarkerName));
+          JSError.make(node, UNMATCHED_START_MARKER, startMarkerName));
     }
 
     // Add the block for the valid marker sets.
@@ -147,7 +145,7 @@ class CreateSyntheticBlocks implements CompilerPass {
    * Like Node.getNext, that null is used to signal the child before the
    * block.
    */
-  private Node childAfter(Node parent, @Nullable Node siblingBefore) {
+  private static Node childAfter(Node parent, @Nullable Node siblingBefore) {
     if (siblingBefore == null) {
       return parent.getFirstChild();
     } else {
@@ -158,7 +156,7 @@ class CreateSyntheticBlocks implements CompilerPass {
   /**
    * Like removeChildAfter, the firstChild is removed
    */
-  private Node removeChildAfter(Node parent, @Nullable Node siblingBefore) {
+  private static Node removeChildAfter(Node parent, @Nullable Node siblingBefore) {
     if (siblingBefore == null) {
       return parent.removeFirstChild();
     } else {

@@ -17,7 +17,6 @@
 package com.google.javascript.jscomp.parsing;
 
 import com.google.common.base.Preconditions;
-import com.google.javascript.rhino.head.ScriptRuntime;
 
 /**
  * This class implements the scanner for JsDoc strings.
@@ -275,7 +274,7 @@ class JsDocTokenStream {
     }
   }
 
-  private boolean isJSDocString(int c) {
+  private static boolean isJSDocString(int c) {
     switch (c) {
       case '@':
       case '*':
@@ -374,7 +373,7 @@ class JsDocTokenStream {
         if (isJSFormatChar(c)) {
           continue;
         }
-        if (ScriptRuntime.isJSLineTerminator(c)) {
+        if (isJSLineTerminator(c)) {
           lineEndChar = c;
           c = '\n';
         }
@@ -420,7 +419,7 @@ class JsDocTokenStream {
         if (isJSFormatChar(c)) {
           continue;
         }
-        if (ScriptRuntime.isJSLineTerminator(c)) {
+        if (isJSLineTerminator(c)) {
           lineEndChar = c;
           c = '\n';
         }
@@ -432,6 +431,15 @@ class JsDocTokenStream {
 
       return c;
     }
+  }
+
+  public static boolean isJSLineTerminator(int c) {
+    // Optimization for faster check for eol character:
+    // they do not have 0xDFD0 bits set
+    if ((c & 0xDFD0) != 0) {
+      return false;
+    }
+    return c == '\n' || c == '\r' || c == 0x2028 || c == 0x2029;
   }
 
   private void ungetCharIgnoreLineEnd(int c) {
@@ -465,11 +473,11 @@ class JsDocTokenStream {
   private int lineEndChar = -1;
   int lineno;
   private int charno = -1;
-  private int initCharno;
-  private int initLineno;
+  private final int initCharno;
+  private final int initLineno;
 
-  private String sourceString;
-  private int sourceEnd;
+  private final String sourceString;
+  private final int sourceEnd;
 
   // sourceCursor is an index into a small buffer that keeps a
   // sliding window of the source stream.

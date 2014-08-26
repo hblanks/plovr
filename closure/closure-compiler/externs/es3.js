@@ -189,16 +189,6 @@ function Object(opt_value) {}
 Object.prototype.constructor = function() {};
 
 /**
- * Evaluates a string of JavaScript code in the context of the specified object.
- * Considered deprecated.
- *
- * @param {string} code
- * @return {Object}
- * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Object/eval
- */
-Object.prototype.eval = function(code) {};
-
-/**
  * Binds an object's property to a function to be called when that property is
  * looked up.
  * Mozilla-only.
@@ -1494,11 +1484,13 @@ Date.prototype.toTimeString = function() {};
 Date.prototype.toUTCString = function() {};
 
 /**
+ * @param {(string|Array.<string>)=} opt_locales
+ * @param {Object=} opt_options
  * @return {string}
  * @nosideeffects
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Date/toLocaleDateString
  */
-Date.prototype.toLocaleDateString = function() {};
+Date.prototype.toLocaleDateString = function(opt_locales, opt_options) {};
 
 /**
  * @param {string} formatString
@@ -1509,19 +1501,24 @@ Date.prototype.toLocaleDateString = function() {};
 Date.prototype.toLocaleFormat = function(formatString) {};
 
 /**
+ * @param {string|Array.<string>=} opt_locales
+ * @param {Object=} opt_options
  * @return {string}
  * @nosideeffects
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Date/toLocaleString
+ * @see http://www.ecma-international.org/ecma-402/1.0/#sec-13.3.1
  * @override
  */
-Date.prototype.toLocaleString = function() {};
+Date.prototype.toLocaleString = function(opt_locales, opt_options) {};
 
 /**
+ * @param {(string|Array.<string>)=} opt_locales
+ * @param {Object=} opt_options
  * @return {string}
  * @nosideeffects
  * @see http://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Global_Objects/Date/toLocaleTimeString
  */
-Date.prototype.toLocaleTimeString = function() {};
+Date.prototype.toLocaleTimeString = function(opt_locales, opt_options) {};
 
 /**
  * @this {Date}

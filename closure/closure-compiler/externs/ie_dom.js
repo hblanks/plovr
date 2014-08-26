@@ -294,9 +294,6 @@ ClipboardData.prototype.setData = function(type, data) {};
  */
 ClipboardData.prototype.getData = function(type) { };
 
-/** @type {function(new:ActiveXObject, string, string=)} */
-Window.prototype.ActiveXObject;
-
 /**
  * @type {!Window}
  * @see https://developer.mozilla.org/en/DOM/window
@@ -1007,6 +1004,10 @@ Element.prototype.classid;
 Element.prototype.componentFromPoint = function(iCoordX, iCoordY) {};
 
 /**
+ * This should really accept a Node, but IE only supports this
+ * with Elements.
+ * @see https://github.com/google/closure-compiler/issues/470
+ *
  * @param {Element} el The element to check
  * @return {boolean} If the element is contained within this one.
  * @see http://msdn.microsoft.com/en-us/library/ms536377(VS.85).aspx
@@ -1030,6 +1031,11 @@ Element.prototype.createTextRange;
  * @see http://msdn.microsoft.com/en-us/library/ms535231(VS.85).aspx
  */
 Element.prototype.currentStyle;
+
+/**
+ * @see http://msdn.microsoft.com/en-us/library/ie/ms536411(v=vs.85).aspx
+ */
+Element.prototype.detachEvent;
 
 /**
  * @param {string=} opt_action
@@ -1057,6 +1063,12 @@ Element.prototype.innerText;
  * @see http://msdn.microsoft.com/en-us/library/ms537838(VS.85).aspx
  */
 Element.prototype.isContentEditable;
+
+/**
+ * @see http://msdn.microsoft.com/en-us/library/ms531395(v=vs.85).aspx
+ * NOTE: Left untyped to avoid conflict with subclasses.
+ */
+Element.prototype.load;
 
 /**
  * @param {number} pointerId Id of the pointer that is assign to the element.
@@ -1122,6 +1134,13 @@ Element.prototype.removeBehavior = function(iID) {};
  * @see http://msdn.microsoft.com/en-us/library/aa703996(VS.85).aspx
  */
 Element.prototype.runtimeStyle;
+
+/**
+ * @param {string} sStoreName The arbitrary name assigned to a persistent object
+ *     in a UserData store.
+ * @see http://msdn.microsoft.com/en-us/library/ms531403(v=vs.85).aspx
+ */
+Element.prototype.save = function(sStoreName) {};
 
 /**
  * @param {boolean=} opt_bContainerCapture Events originating in a container are

@@ -84,9 +84,8 @@ class Normalize implements CompilerPass {
     // is normalized.
   }
 
-  static Node parseAndNormalizeSyntheticCode(
-      AbstractCompiler compiler, String code, String prefix) {
-    Node js = compiler.parseSyntheticCode(code);
+  static void normalizeSyntheticCode(
+      AbstractCompiler compiler, Node js, String prefix) {
     NodeTraversal.traverse(compiler, js,
         new Normalize.NormalizeStatements(compiler, false));
     NodeTraversal.traverse(
@@ -96,7 +95,6 @@ class Normalize implements CompilerPass {
                 compiler.getCodingConvention(),
                 compiler.getUniqueNameIdSupplier(),
                 prefix)));
-    return js;
   }
 
   static Node parseAndNormalizeTestCode(
@@ -180,7 +178,7 @@ class Normalize implements CompilerPass {
       }
     }
 
-    private boolean isMarkedExpose(Node n) {
+    private static boolean isMarkedExpose(Node n) {
       JSDocInfo info = n.getJSDocInfo();
       return info != null && info.isExpose();
     }
@@ -397,7 +395,9 @@ class Normalize implements CompilerPass {
           break;
 
         case Token.FUNCTION:
-          normalizeFunctionDeclaration(n);
+          if (maybeNormalizeFunctionDeclaration(n)) {
+            reportCodeChange("Function declaration");
+          }
           break;
 
         case Token.NAME:
@@ -454,17 +454,26 @@ class Normalize implements CompilerPass {
     /**
      * Rewrite named unhoisted functions declarations to a known
      * consistent behavior so we don't to different logic paths for the same
-     * code. From:
+     * code.
+     *
+     * From:
      *    function f() {}
      * to:
      *    var f = function () {};
+     * and move it to the top of the block. This actually breaks
+     * semantics, but the semantics are also not well-defined
+     * cross-browser.
+     *
+     * @see https://github.com/google/closure-compiler/pull/429
      */
-    private void normalizeFunctionDeclaration(Node n) {
+    static boolean maybeNormalizeFunctionDeclaration(Node n) {
       Preconditions.checkState(n.isFunction());
       if (!NodeUtil.isFunctionExpression(n)
           && !NodeUtil.isHoistedFunctionDeclaration(n)) {
         rewriteFunctionDeclaration(n);
+        return true;
       }
+      return false;
     }
 
     /**
@@ -483,7 +492,7 @@ class Normalize implements CompilerPass {
      *         LP
      *         BLOCK
      */
-    private void rewriteFunctionDeclaration(Node n) {
+    private static void rewriteFunctionDeclaration(Node n) {
       // Prepare a spot for the function.
       Node oldNameNode = n.getFirstChild();
       Node fnNameNode = oldNameNode.cloneNode();
@@ -492,12 +501,15 @@ class Normalize implements CompilerPass {
       // Prepare the function
       oldNameNode.setString("");
 
-      // Move the function
+      // Move the function if it's not the child of a label node
       Node parent = n.getParent();
-      parent.replaceChild(n, var);
+      if (parent.isLabel()) {
+        parent.replaceChild(n, var);
+      } else {
+        parent.removeChild(n);
+        parent.addChildToFront(var);
+      }
       fnNameNode.addChildToFront(n);
-
-      reportCodeChange("Function declaration");
     }
 
     /**
@@ -536,6 +548,7 @@ class Normalize implements CompilerPass {
       Preconditions.checkArgument(n.isLabel());
 
       Node last = n.getLastChild();
+      // TODO(moz): Avoid adding blocks for cases like "label: let x;"
       switch (last.getType()) {
         case Token.LABEL:
         case Token.BLOCK:
@@ -683,7 +696,7 @@ class Normalize implements CompilerPass {
      *     newChild should be added to the front of parent's child list.
      * @return The inserted child node.
      */
-    private Node addToFront(Node parent, Node newChild, Node after) {
+    private static Node addToFront(Node parent, Node newChild, Node after) {
       if (after == null) {
         parent.addChildToFront(newChild);
       } else {
@@ -754,10 +767,7 @@ class Normalize implements CompilerPass {
         // Use the name of the var before it was made unique.
         name = MakeDeclaredNamesUnique.ContextualRenameInverter.getOrginalName(
             name);
-        compiler.report(
-            JSError.make(
-                input.getName(), n,
-                CATCH_BLOCK_VAR_ERROR, name));
+        compiler.report(JSError.make(n, CATCH_BLOCK_VAR_ERROR, name));
       } else if (v != null && parent.isFunction()) {
         if (v.getParentNode().isVar()) {
           s.undeclare(v);
@@ -796,6 +806,7 @@ class Normalize implements CompilerPass {
         Node value = n.getFirstChild();
         n.removeChild(value);
         Node replacement = IR.assign(n, value);
+        replacement.setJSDocInfo(parent.getJSDocInfo());
         replacement.copyInformationFrom(parent);
         gramps.replaceChild(parent, NodeUtil.newExpr(replacement));
       } else {
@@ -822,7 +833,7 @@ class Normalize implements CompilerPass {
   /**
    * A simple class that causes scope to be created.
    */
-  private final class ScopeTicklingCallback
+  private static final class ScopeTicklingCallback
       implements NodeTraversal.ScopedCallback {
     @Override
     public void enterScope(NodeTraversal t) {

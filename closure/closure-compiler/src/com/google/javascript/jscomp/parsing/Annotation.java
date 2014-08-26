@@ -48,6 +48,10 @@ enum Annotation {
   INHERIT_DOC,
   INTERFACE,
   JAVA_DISPATCH,
+  JAGGER_INJECT,
+  JAGGER_MODULE,
+  JAGGER_PROVIDE,
+  JAGGER_PROVIDE_PROMISE,
   LENDS,
   LICENSE, // same as preserve
   MEANING,
@@ -59,6 +63,7 @@ enum Annotation {
   NO_TYPE_CHECK,
   NOT_IMPLEMENTED,
   OVERRIDE,
+  PACKAGE,
   PARAM,
   PRESERVE, // same as license
   PRESERVE_TRY,
@@ -75,6 +80,7 @@ enum Annotation {
   THROWS,
   TYPE,
   TYPEDEF,
+  UNRESTRICTED,
   VERSION,
   WIZACTION;
 
@@ -107,6 +113,10 @@ enum Annotation {
       put("inheritDoc", Annotation.INHERIT_DOC).
       put("interface", Annotation.INTERFACE).
       put("javadispatch", Annotation.JAVA_DISPATCH).
+      put("jaggerInject", Annotation.JAGGER_INJECT).
+      put("jaggerModule", Annotation.JAGGER_MODULE).
+      put("jaggerProvidePromise", Annotation.JAGGER_PROVIDE_PROMISE).
+      put("jaggerProvide", Annotation.JAGGER_PROVIDE).
       put("lends", Annotation.LENDS).
       put("license", Annotation.LICENSE).
       put("meaning", Annotation.MEANING).
@@ -118,6 +128,7 @@ enum Annotation {
       put("notypecheck", Annotation.NO_TYPE_CHECK).
       put("override", Annotation.OVERRIDE).
       put("owner", Annotation.AUTHOR).
+      put("package", Annotation.PACKAGE).
       put("param", Annotation.PARAM).
       put("preserve", Annotation.PRESERVE).
       put("preserveTry", Annotation.PRESERVE_TRY).
@@ -135,6 +146,7 @@ enum Annotation {
       put("throws", Annotation.THROWS).
       put("type", Annotation.TYPE).
       put("typedef", Annotation.TYPEDEF).
+      put("unrestricted", Annotation.UNRESTRICTED).
       put("version", Annotation.VERSION).
       put("wizaction", Annotation.WIZACTION).
       build();

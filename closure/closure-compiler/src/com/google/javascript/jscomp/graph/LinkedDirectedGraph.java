@@ -46,23 +46,23 @@ public class LinkedDirectedGraph<N, E>
 
   @Override
   public SubGraph<N, E> newSubGraph() {
-    return new SimpleSubGraph<N, E>(this);
+    return new SimpleSubGraph<>(this);
   }
 
   public static <N, E> LinkedDirectedGraph<N, E> createWithoutAnnotations() {
-    return new LinkedDirectedGraph<N, E>(false, false);
+    return new LinkedDirectedGraph<>(false, false);
   }
 
   public static <N, E> LinkedDirectedGraph<N, E> createWithNodeAnnotations() {
-    return new LinkedDirectedGraph<N, E>(true, false);
+    return new LinkedDirectedGraph<>(true, false);
   }
 
   public static <N, E> LinkedDirectedGraph<N, E> createWithEdgeAnnotations() {
-    return new LinkedDirectedGraph<N, E>(false, true);
+    return new LinkedDirectedGraph<>(false, true);
   }
 
   public static <N, E> LinkedDirectedGraph<N, E> create() {
-    return new LinkedDirectedGraph<N, E>(true, true);
+    return new LinkedDirectedGraph<>(true, true);
   }
 
   private final boolean useNodeAnnotations;
@@ -80,8 +80,8 @@ public class LinkedDirectedGraph<N, E>
     LinkedDirectedGraphNode<N, E> dest = getNodeOrFail(destValue);
     LinkedDirectedGraphEdge<N, E> edge =
         useEdgeAnnotations ?
-        new AnnotatedLinkedDirectedGraphEdge<N, E>(src, edgeValue, dest) :
-        new LinkedDirectedGraphEdge<N, E>(src, edgeValue, dest);
+        new AnnotatedLinkedDirectedGraphEdge<>(src, edgeValue, dest) :
+        new LinkedDirectedGraphEdge<>(src, edgeValue, dest);
     src.getOutEdges().add(edge);
     dest.getInEdges().add(edge);
   }
@@ -121,13 +121,13 @@ public class LinkedDirectedGraph<N, E>
   @Override
   public List<DiGraphEdge<N, E>> getInEdges(N nodeValue) {
     LinkedDirectedGraphNode<N, E> node = getNodeOrFail(nodeValue);
-    return Collections.<DiGraphEdge<N, E>>unmodifiableList(node.getInEdges());
+    return Collections.unmodifiableList(node.getInEdges());
   }
 
   @Override
   public List<DiGraphEdge<N, E>> getOutEdges(N nodeValue) {
     LinkedDirectedGraphNode<N, E> node = getNodeOrFail(nodeValue);
-    return Collections.<DiGraphEdge<N, E>>unmodifiableList(node.getOutEdges());
+    return Collections.unmodifiableList(node.getOutEdges());
   }
 
   @Override
@@ -143,13 +143,13 @@ public class LinkedDirectedGraph<N, E>
   }
 
   @Override
-  public List<GraphEdge<N, E>> getEdges(N n1, N n2) {
+  public List<DiGraphEdge<N, E>> getEdges(N n1, N n2) {
     // Since this is a method from a generic graph, edges from both
     // directions must be added to the returning list.
     List<DiGraphEdge<N, E>> forwardEdges = getDirectedGraphEdges(n1, n2);
     List<DiGraphEdge<N, E>> backwardEdges = getDirectedGraphEdges(n2, n1);
     int totalSize = forwardEdges.size() + backwardEdges.size();
-    List<GraphEdge<N, E>> edges = Lists.newArrayListWithCapacity(totalSize);
+    List<DiGraphEdge<N, E>> edges = Lists.newArrayListWithCapacity(totalSize);
     edges.addAll(forwardEdges);
     edges.addAll(backwardEdges);
     return edges;
@@ -282,8 +282,8 @@ public class LinkedDirectedGraph<N, E>
   }
 
   @Override
-  public Collection<GraphNode<N, E>> getNodes() {
-    return Collections.<GraphNode<N, E>>unmodifiableCollection(nodes.values());
+  public Collection<DiGraphNode<N, E>> getNodes() {
+    return Collections.<DiGraphNode<N, E>>unmodifiableCollection(nodes.values());
   }
 
   @Override
@@ -309,12 +309,10 @@ public class LinkedDirectedGraph<N, E>
   }
 
   @Override
-  public List<GraphEdge<N, E>> getEdges() {
-    List<GraphEdge<N, E>> result = Lists.newArrayList();
+  public List<DiGraphEdge<N, E>> getEdges() {
+    List<DiGraphEdge<N, E>> result = Lists.newArrayList();
     for (DiGraphNode<N, E> node : nodes.values()) {
-      for (DiGraphEdge<N, E> edge : node.getOutEdges()) {
-        result.add(edge);
-      }
+      result.addAll(node.getOutEdges());
     }
     return Collections.unmodifiableList(result);
   }
@@ -376,7 +374,7 @@ public class LinkedDirectedGraph<N, E>
 
     @Override
     public String getLabel() {
-      return value != null ? value.toString() : "null";
+      return String.valueOf(value);
     }
 
     @Override
@@ -519,7 +517,7 @@ public class LinkedDirectedGraph<N, E>
 
     @Override
     public String getLabel() {
-      return value != null ? value.toString() : "null";
+      return String.valueOf(value);
     }
 
     @Override
@@ -534,7 +532,7 @@ public class LinkedDirectedGraph<N, E>
 
     @Override
     public String toString() {
-      return sourceNode.toString() + " -> " + destNode.toString();
+      return sourceNode + " -> " + destNode;
     }
 
     @Override

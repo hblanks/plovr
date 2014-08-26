@@ -170,6 +170,12 @@ abstract class CodeConsumer {
     }
   }
 
+  void endClass(boolean statementContext) {
+    if (statementContext) {
+      endLine();
+    }
+  }
+
   void beginCaseBody() {
     append(":");
   }
@@ -180,7 +186,7 @@ abstract class CodeConsumer {
   void add(String newcode) {
     maybeEndStatement();
 
-    if (newcode.length() == 0) {
+    if (newcode.isEmpty()) {
       return;
     }
 
@@ -197,6 +203,8 @@ abstract class CodeConsumer {
       // is valid and should print like
       // / // / /
       append(" ");
+    } else if (c == '"' && isWordChar(getLastChar())) {
+      maybeInsertSpace();
     }
 
     append(newcode);
@@ -220,8 +228,8 @@ abstract class CodeConsumer {
                isWordChar(prev)) {
       // Make sure there is a space after e.g. instanceof , typeof
       append(" ");
-    } else if (prev == '-' && first == '>') {
-      // Make sure that we don't emit -->
+    } else if (prev == '-' && first == '>' || prev == '<' && first == '!') {
+      // Make sure that we don't emit "<!--" or "-->"
       append(" ");
     }
 
@@ -261,7 +269,8 @@ abstract class CodeConsumer {
         addConstant(Long.toString(mantissa) + "E" + Integer.toString(exp));
       } else {
         long valueAbs = Math.abs(value);
-        if (Long.toHexString(valueAbs).length() + 2 <
+        if (valueAbs > 1000000000000L && // Values <1E12 are shorter in decimal
+            Long.toHexString(valueAbs).length() + 2 <
             Long.toString(valueAbs).length()) {
           addConstant((value < 0 ? "-" : "") + "0x" +
               Long.toHexString(valueAbs));
@@ -270,7 +279,8 @@ abstract class CodeConsumer {
         }
       }
     } else {
-      addConstant(String.valueOf(x).replace(".0E", "E"));
+      addConstant(String.valueOf(x).replace(".0E", "E").replaceFirst(
+          "^(-?)0\\.", "$1."));
     }
   }
 
@@ -299,6 +309,14 @@ abstract class CodeConsumer {
   boolean shouldPreserveExtraBlocks() {
     return false;
   }
+
+  /**
+   * Allows a consumer to insert spaces in locations where it is unnecessary
+   * but may improve the readability of the code. This will be called in such
+   * places as after a statement and before opening parantheses, or after the
+   * end of a if block before the start of an else block.
+   */
+  void maybeInsertSpace() {}
 
   /**
    * @return Whether the a line break can be added after the specified BLOCK.

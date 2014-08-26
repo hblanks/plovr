@@ -160,7 +160,7 @@ class CollapseProperties implements CompilerPass {
    */
   private void inlineAliases(GlobalNamespace namespace) {
     // Invariant: All the names in the worklist meet condition (a).
-    Deque<Name> workList = new ArrayDeque<Name>(namespace.getNameForest());
+    Deque<Name> workList = new ArrayDeque<>(namespace.getNameForest());
 
     while (!workList.isEmpty()) {
       Name name = workList.pop();
@@ -222,9 +222,8 @@ class CollapseProperties implements CompilerPass {
 
     Node aliasParent = alias.node.getParent();
     if (aliasParent.isAssign() && NodeUtil.isExecutedExactlyOnce(aliasParent)) {
-      String target = aliasParent.getFirstChild().getQualifiedName();
-      if (target != null) {
-        Name name = namespace.getSlot(target);
+      if (aliasParent.getFirstChild().isQualifiedName()) {
+        Name name = namespace.getSlot(aliasParent.getFirstChild().getQualifiedName());
         if (name != null && isInlinableGlobalAlias(name)) {
           List<AstChange> newNodes = Lists.newArrayList();
 
@@ -270,11 +269,11 @@ class CollapseProperties implements CompilerPass {
    * @param depth The chain depth.
    * @param newNodes Expression nodes that have been updated.
    */
-  private void rewriteAliasProps(
+  private static void rewriteAliasProps(
       Name name, Node value, int depth, List<AstChange> newNodes) {
     if (name.props != null) {
       Preconditions.checkState(!
-          value.getQualifiedName().equals(name.getFullName()));
+          value.matchesQualifiedName(name.getFullName()));
 
       for (Name prop : name.props) {
         rewriteAliasProps(prop, value, depth + 1, newNodes);
@@ -310,7 +309,7 @@ class CollapseProperties implements CompilerPass {
     }
   }
 
-  private boolean isInlinableGlobalAlias(Name name) {
+  private static boolean isInlinableGlobalAlias(Name name) {
     // Only simple aliases with direct usage are inlinable.
     if (name.inExterns || name.globalSets != 1 || name.localSets != 0
         || !name.canCollapse()) {
@@ -352,8 +351,8 @@ class CollapseProperties implements CompilerPass {
       ReferenceCollectingCallback collector =
           new ReferenceCollectingCallback(compiler,
               ReferenceCollectingCallback.DO_NOTHING_BEHAVIOR,
-              Predicates.<Var>equalTo(aliasVar));
-      (new NodeTraversal(compiler, collector)).traverseAtScope(scope);
+              Predicates.equalTo(aliasVar));
+      collector.processScope(scope);
 
       ReferenceCollection aliasRefs = collector.getReferences(aliasVar);
       List<AstChange> newNodes = Lists.newArrayList();
@@ -411,9 +410,9 @@ class CollapseProperties implements CompilerPass {
               warnAboutNamespaceRedefinition(name, ref);
             }
           } else if (
-              ref.type == Ref.Type.SET_FROM_GLOBAL ||
-              ref.type == Ref.Type.SET_FROM_LOCAL) {
-            if (initialized) {
+              ref.type == Ref.Type.SET_FROM_GLOBAL
+              || ref.type == Ref.Type.SET_FROM_LOCAL) {
+            if (initialized && !isSafeNamespaceReinit(ref)) {
               warnAboutNamespaceRedefinition(name, ref);
             }
 
@@ -426,6 +425,33 @@ class CollapseProperties implements CompilerPass {
     }
   }
 
+  private boolean isSafeNamespaceReinit(Ref ref) {
+    // allow "a = a || {}" or "var a = a || {}"
+    Node valParent = getValueParent(ref);
+    Node val = valParent.getLastChild();
+    if (val.getType() == Token.OR) {
+      Node maybeName = val.getFirstChild();
+      if (ref.node.matchesQualifiedName(maybeName)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Gets the parent node of the value for any assignment to a Name.
+   * For example, in the assignment
+   * {@code var x = 3;}
+   * the parent would be the NAME node.
+   */
+  private static Node getValueParent(Ref ref) {
+    // there are two types of declarations: VARs and ASSIGNs
+    return (ref.node.getParent() != null
+        && ref.node.getParent().isVar())
+        ? ref.node : ref.node.getParent();
+  }
+
   /**
    * Reports a warning because a namespace was aliased.
    *
@@ -434,7 +460,7 @@ class CollapseProperties implements CompilerPass {
    */
   private void warnAboutNamespaceAliasing(Name nameObj, Ref ref) {
     compiler.report(
-        JSError.make(ref.getSourceName(), ref.node,
+        JSError.make(ref.node,
                      UNSAFE_NAMESPACE_WARNING, nameObj.getFullName()));
   }
 
@@ -446,7 +472,7 @@ class CollapseProperties implements CompilerPass {
    */
   private void warnAboutNamespaceRedefinition(Name nameObj, Ref ref) {
     compiler.report(
-        JSError.make(ref.getSourceName(), ref.node,
+        JSError.make(ref.node,
                      NAMESPACE_REDEFINED_WARNING, nameObj.getFullName()));
   }
 
@@ -890,8 +916,7 @@ class CollapseProperties implements CompilerPass {
             public void visit(NodeTraversal t, Node n, Node parent) {
               if (n.isThis()) {
                 compiler.report(
-                    JSError.make(name.getDeclaration().getSourceName(), n,
-                        UNSAFE_THIS, name.getFullName()));
+                    JSError.make(n, UNSAFE_THIS, name.getFullName()));
               }
             }
           });

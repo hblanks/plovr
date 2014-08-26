@@ -22,6 +22,7 @@ import com.google.javascript.rhino.jstype.JSTypeNative;
 import com.google.javascript.rhino.jstype.JSTypeRegistry;
 import com.google.javascript.rhino.jstype.ObjectType;
 import com.google.javascript.rhino.jstype.StaticScope;
+import com.google.javascript.rhino.jstype.StaticSourceFile;
 
 import java.io.Serializable;
 import java.util.Collection;
@@ -85,6 +86,12 @@ public interface CodingConvention extends Serializable {
   public boolean isVarArgsParameter(Node parameter);
 
   /**
+   * Used by CheckMissingReturn. When a function call always throws an error,
+   * it can be the last stm of a block and we don't warn about missing return.
+   */
+  public boolean isFunctionCallThatAlwaysThrows(Node n);
+
+  /**
    * Checks whether a global variable or function name should be treated as
    * exported, or externally referenceable.
    *
@@ -98,6 +105,12 @@ public interface CodingConvention extends Serializable {
    * Should be isExported(name, true) || isExported(name, false);
    */
   public boolean isExported(String name);
+
+  /**
+   * @return the package name for the given source file, or null if
+   *     no package name is known.
+   */
+  public String getPackageName(StaticSourceFile source);
 
   /**
    * Checks whether a name should be considered private. Private global
@@ -126,6 +139,13 @@ public interface CodingConvention extends Serializable {
    * this.superClass_.
    */
   public boolean isSuperClassReference(String propertyName);
+
+  /**
+   * Convenience method for determining if the node indicates the file
+   * is a "module" file (a file whose top level symbols are not in global
+   * scope).
+   */
+  boolean extractIsModuleFile(Node node, Node parent);
 
   /**
    * Convenience method for determining provided dependencies amongst different

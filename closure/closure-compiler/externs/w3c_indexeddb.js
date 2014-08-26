@@ -208,25 +208,25 @@ webkitIDBDatabaseException.QUOTA_ERR;
  * @const
  * @type {number}
  */
-IDBDatabaseException.code;
+IDBDatabaseException.prototype.code;
 
 /**
  * @const
  * @type {number}
  */
-webkitIDBDatabaseException.code;
+webkitIDBDatabaseException.prototype.code;
 
 /**
  * @const
  * @type {string}
  */
-IDBDatabaseException.message;
+IDBDatabaseException.prototype.message;
 
 /**
  * @const
  * @type {string}
  */
-webkitIDBDatabaseException.message;
+webkitIDBDatabaseException.prototype.message;
 
 /** @type {function(new:IDBRequest)} */
 Window.prototype.IDBRequest;
@@ -241,12 +241,19 @@ Window.prototype.webkitIDBRequest;
  */
 function IDBRequest() {}
 
-/** @override */
-IDBRequest.prototype.addEventListener = function(type, listener, useCapture) {};
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
+IDBRequest.prototype.addEventListener =
+    function(type, listener, opt_useCapture) {};
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 IDBRequest.prototype.removeEventListener =
-    function(type, listener, useCapture) {};
+    function(type, listener, opt_useCapture) {};
 
 /** @override */
 IDBRequest.prototype.dispatchEvent = function(evt) {};
@@ -408,13 +415,19 @@ IDBDatabase.prototype.onerror = function() {};
  */
 IDBDatabase.prototype.onversionchange = function() {};
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 IDBDatabase.prototype.addEventListener =
-    function(type, listener, useCapture) {};
+    function(type, listener, opt_useCapture) {};
 
-/** @override */
+/**
+ * @param {boolean=} opt_useCapture
+ * @override
+ */
 IDBDatabase.prototype.removeEventListener =
-    function(type, listener, useCapture) {};
+    function(type, listener, opt_useCapture) {};
 
 /** @override */
 IDBDatabase.prototype.dispatchEvent = function(evt) {};
@@ -473,10 +486,10 @@ IDBObjectStore.prototype.add = function(value, key) {};
  * @param {IDBKeyType} key The key of this value.
  * @return {!IDBRequest} The IDBRequest object.
  */
-IDBObjectStore.prototype['delete'] = function(key) {};
+IDBObjectStore.prototype.delete = function(key) {};
 
 /**
- * @param {IDBKeyType} key The key of the document to retrieve.
+ * @param {IDBKeyType|!IDBKeyRange} key The key of the document to retrieve.
  * @return {!IDBRequest} The IDBRequest object.
  */
 IDBObjectStore.prototype.get = function(key) {};
@@ -565,13 +578,13 @@ IDBIndex.prototype.openCursor = function(range, direction) {};
 IDBIndex.prototype.openKeyCursor = function(range, direction) {};
 
 /**
- * @param {IDBKeyType} key The id of the object to retrieve.
+ * @param {IDBKeyType|!IDBKeyRange} key The id of the object to retrieve.
  * @return {!IDBRequest} The IDBRequest object.
  */
 IDBIndex.prototype.get = function(key) {};
 
 /**
- * @param {IDBKeyType} key The id of the object to retrieve.
+ * @param {IDBKeyType|!IDBKeyRange} key The id of the object to retrieve.
  * @return {!IDBRequest} The IDBRequest object.
  */
 IDBIndex.prototype.getKey = function(key) {};
@@ -678,7 +691,7 @@ IDBCursor.prototype.update = function(value) {};
  * @param {IDBKeyType=} key Continue enumerating the cursor from the specified
  *     key (or next).
  */
-IDBCursor.prototype['continue'] = function(key) {};
+IDBCursor.prototype.continue = function(key) {};
 
 /**
  * @param {number} count Number of times to iterate the cursor.
@@ -689,7 +702,17 @@ IDBCursor.prototype.advance = function(count) {};
  * Note: Must be quoted to avoid parse error.
  * @return {!IDBRequest} The IDBRequest object.
  */
-IDBCursor.prototype['delete'] = function() {};
+IDBCursor.prototype.delete = function() {};
+
+/**
+ * @constructor
+ * @extends {IDBCursor}
+ * @see http://www.w3.org/TR/IndexedDB/#idl-def-IDBCursorWithValue
+ */
+function IDBCursorWithValue() {}
+
+/** @type {*} */
+IDBCursorWithValue.prototype.value; // readonly
 
 /** @type {function(new:IDBTransaction)} */
 Window.prototype.IDBTransaction;

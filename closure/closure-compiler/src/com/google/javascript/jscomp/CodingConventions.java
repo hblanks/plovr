@@ -24,6 +24,7 @@ import com.google.javascript.rhino.jstype.JSType;
 import com.google.javascript.rhino.jstype.JSTypeRegistry;
 import com.google.javascript.rhino.jstype.ObjectType;
 import com.google.javascript.rhino.jstype.StaticScope;
+import com.google.javascript.rhino.jstype.StaticSourceFile;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -85,10 +86,19 @@ public class CodingConventions {
     }
 
     @Override
+    public boolean isFunctionCallThatAlwaysThrows(Node n) {
+      return nextConvention.isFunctionCallThatAlwaysThrows(n);
+    }
+
+    @Override
     public boolean isExported(String name, boolean local) {
       return nextConvention.isExported(name, local);
     }
 
+    @Override
+    public String getPackageName(StaticSourceFile source) {
+      return nextConvention.getPackageName(source);
+    }
 
     @Override
     public final boolean isExported(String name) {
@@ -108,6 +118,11 @@ public class CodingConventions {
     @Override
     public boolean isSuperClassReference(String propertyName) {
       return nextConvention.isSuperClassReference(propertyName);
+    }
+
+    @Override
+    public boolean extractIsModuleFile(Node node, Node parent) {
+      return nextConvention.extractIsModuleFile(node, parent);
     }
 
     @Override
@@ -269,13 +284,26 @@ public class CodingConventions {
     public boolean isOptionalParameter(Node parameter) {
       // be as lax as possible, but this must be mutually exclusive from
       // var_args parameters.
-      return false;
+      return parameter.isOptionalArg();
     }
 
     @Override
     public boolean isVarArgsParameter(Node parameter) {
       // be as lax as possible
+      return parameter.isVarArgs();
+    }
+
+    @Override
+    public boolean isFunctionCallThatAlwaysThrows(Node n) {
       return false;
+    }
+
+    @Override
+    public String getPackageName(StaticSourceFile source) {
+      // The package name of a source file is its file path.
+      String name = source.getName();
+      int lastSlash = name.lastIndexOf("/");
+      return lastSlash == -1 ? "" : name.substring(0, lastSlash);
     }
 
     @Override
@@ -304,14 +332,20 @@ public class CodingConventions {
     }
 
     @Override
+    public boolean extractIsModuleFile(Node node, Node parent) {
+      String message = "only implemented in ClosureCodingConvention";
+      throw new UnsupportedOperationException(message);
+    }
+
+    @Override
     public String extractClassNameIfProvide(Node node, Node parent) {
-      String message = "only implemented in GoogleCodingConvention";
+      String message = "only implemented in ClosureCodingConvention";
       throw new UnsupportedOperationException(message);
     }
 
     @Override
     public String extractClassNameIfRequire(Node node, Node parent) {
-      String message = "only implemented in GoogleCodingConvention";
+      String message = "only implemented in ClosureCodingConvention";
       throw new UnsupportedOperationException(message);
     }
 
@@ -427,9 +461,8 @@ public class CodingConventions {
       }
 
       Node callTarget = n.getFirstChild();
-      String name = callTarget.getQualifiedName();
-      if (name != null) {
-        if (name.equals("Function.prototype.bind.call")) {
+      if (callTarget.isQualifiedName()) {
+        if (callTarget.matchesQualifiedName("Function.prototype.bind.call")) {
           // goog.bind(fn, self, args...);
           Node fn = callTarget.getNext();
           if (fn == null) {
@@ -467,7 +500,7 @@ public class CodingConventions {
       return ImmutableList.of();
     }
 
-    private Node safeNext(Node n) {
+    private static Node safeNext(Node n) {
       if (n != null) {
         return n.getNext();
       }

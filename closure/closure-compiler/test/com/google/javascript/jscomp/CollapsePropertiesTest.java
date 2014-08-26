@@ -24,9 +24,10 @@ import com.google.javascript.rhino.Node;
  * Tests for {@link CollapseProperties}.
  *
  */
+
 public class CollapsePropertiesTest extends CompilerTestCase {
 
-  private static String EXTERNS =
+  private static final String EXTERNS =
       "var window;\n" +
       "function alert(s) {}\n" +
       "function parseInt(s) {}\n" +
@@ -48,6 +49,7 @@ public class CollapsePropertiesTest extends CompilerTestCase {
   public void setUp() {
     enableLineNumberCheck(true);
     enableNormalize(true);
+    compareJsDoc = false;
   }
 
   @Override public int getNumRepetitions() {
@@ -113,9 +115,9 @@ public class CollapsePropertiesTest extends CompilerTestCase {
   }
 
   public void testObjLitDeclarationWithDuplicateKeys() {
+    disableNormalize();
     test("var a = {b: 0, b: 1}; var c = a.b;",
-         "var a$b = 0; var a$b = 1; var c = a$b;",
-         SyntacticScopeCreator.VAR_MULTIPLY_DECLARED_ERROR);
+         "var a$b = 0; var a$b = 1; var c = a$b;");
   }
 
   public void testObjLitAssignmentDepth1() {
@@ -535,6 +537,17 @@ public class CollapsePropertiesTest extends CompilerTestCase {
     test("var a = {}; a = {}; /** @constructor */a.b = function() {};",
          "var a = {}; a = {}; var a$b = function() {};",
          null, CollapseProperties.NAMESPACE_REDEFINED_WARNING);
+  }
+
+  public void testNamespaceResetInGlobalScope3() {
+    test("var a = {}; /** @constructor */a.b = function() {}; a = a || {};",
+         "var a = {}; var a$b = function() {}; a = a || {};");
+  }
+
+
+  public void testNamespaceResetInGlobalScope4() {
+    test("var a = {}; /** @constructor */a.b = function() {}; var a = a || {};",
+         "var a = {}; var a$b = function() {}; var a = a || {};");
   }
 
   public void testNamespaceResetInLocalScope1() {
@@ -1145,7 +1158,7 @@ public class CollapsePropertiesTest extends CompilerTestCase {
          "for (var key in Foo) {}");
   }
 
-  private final String COMMON_ENUM =
+  private static final String COMMON_ENUM =
         "/** @enum {Object} */ var Foo = {A: {c: 2}, B: {c: 3}};";
 
   public void testEnumOfObjects1() {
@@ -1619,5 +1632,120 @@ public class CollapsePropertiesTest extends CompilerTestCase {
         "blob.init = nullFunction;\n" +
         "use(blob.init)",
         null);
+  }
+
+  public void testLocalAliasOfEnumWithInstanceofCheck() {
+    test(
+        "/** @constructor */\n" +
+        "var Enums = function() {\n" +
+        "};\n" +
+        "\n" +
+        "/** @enum {number} */\n" +
+        "Enums.Fruit = {\n" +
+        " APPLE: 1,\n" +
+        " BANANA: 2,\n" +
+        "};\n" +
+        "\n" +
+        "function foo(f) {\n" +
+        " if (f instanceof Enums) { alert('what?'); return; }\n" +
+        "\n" +
+        " var Fruit = Enums.Fruit;\n" +
+        " if (f == Fruit.APPLE) alert('apple');\n" +
+        " if (f == Fruit.BANANA) alert('banana');\n" +
+        "}",
+        "var Enums = function() {};\n" +
+        "var Enums$Fruit$APPLE = 1;\n" +
+        "var Enums$Fruit$BANANA = 2;\n" +
+        "function foo(f) {\n" +
+        " if (f instanceof Enums) { alert('what?'); return; }\n" +
+        " var Fruit = null;\n" +
+        " if (f == Enums$Fruit$APPLE) alert('apple');\n" +
+        " if (f == Enums$Fruit$BANANA) alert('banana');\n" +
+        "}",
+        null);
+  }
+
+  public void testCollapsePropertiesOfClass1() {
+    test(
+        "/** @constructor */\n" +
+        "var namespace = function() {};\n" +
+        "goog.inherits(namespace, Object);\n" +
+        "\n" +
+        "namespace.includeExtraParam = true;\n" +
+        "\n" +
+        "/** @enum {number} */\n" +
+        "namespace.Param = {\n" +
+        "  param1: 1,\n" +
+        "  param2: 2\n" +
+        "};\n" +
+        "\n" +
+        "if (namespace.includeExtraParam) {\n" +
+        "  namespace.Param.optParam = 3;\n" +
+        "}\n" +
+        "\n" +
+        "function f() {\n" +
+        "  var Param = namespace.Param;\n" +
+        "  log(namespace.Param.optParam);\n" +
+        "  log(Param.optParam);\n" +
+        "}",
+        "var namespace = function() {};\n" +
+        "goog.inherits(namespace, Object);\n" +
+        "var namespace$includeExtraParam = true;\n" +
+        "var namespace$Param$param1 = 1;\n" +
+        "var namespace$Param$param2 = 2;\n" +
+        "if (namespace$includeExtraParam) {\n" +
+        "  var namespace$Param$optParam = 3;\n" +
+        "}\n" +
+        "function f() {\n" +
+        "  var Param = null;\n" +
+        "  log(namespace$Param$optParam);\n" +
+        "  log(namespace$Param$optParam);\n" +
+        "}");
+  }
+
+  public void testCollapsePropertiesOfClass2() {
+    test(
+        "var goog = goog || {};\n" +
+        "goog.addSingletonGetter = function(cls) {};\n" +
+        "\n" +
+        "var a = {};\n" +
+        "\n" +
+        "/** @constructor */\n" +
+        "a.b = function() {};\n" +
+        "goog.addSingletonGetter(a.b);\n" +
+        "a.b.prototype.get = function(key) {};\n" +
+        "\n" +
+        "/** @constructor */\n" +
+        "a.b.c = function() {};\n" +
+        "a.b.c.XXX = new a.b.c();\n" +
+        "\n" +
+        "function f() {\n" +
+        "  var x = a.b.getInstance();\n" +
+        "  var Key = a.b.c;\n" +
+        "  x.get(Key.XXX);\n" +
+        "}",
+
+        "var goog = goog || {};\n" +
+        "var goog$addSingletonGetter = function(cls) {};\n" +
+        "var a$b = function() {};\n" +
+        "goog$addSingletonGetter(a$b);\n" +
+        "a$b.prototype.get = function(key) {};\n" +
+        "var a$b$c = function() {};\n" +
+        "var a$b$c$XXX = new a$b$c();\n" +
+        "\n" +
+        "function f() {\n" +
+        "  var x = a$b.getInstance();\n" +
+        "  var Key = null;\n" +
+        "  x.get(a$b$c$XXX);\n" +
+        "}");
+  }
+
+  public void testGlobalCatch() throws Exception {
+    testSame(
+        "try {" +
+        "  throw Error();" +
+        "} catch (e) {" +
+        "  console.log(e.name)" +
+        "}");
   }
 }

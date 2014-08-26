@@ -29,6 +29,8 @@ import static com.google.javascript.rhino.jstype.JSTypeNative.VOID_TYPE;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
+import com.google.javascript.jscomp.CodingConvention.SubclassRelationship;
+import com.google.javascript.jscomp.CodingConvention.SubclassType;
 import com.google.javascript.jscomp.Scope.Var;
 import com.google.javascript.jscomp.type.ReverseAbstractInterpreter;
 import com.google.javascript.rhino.JSDocInfo;
@@ -62,7 +64,7 @@ public class TypeCheck implements NodeTraversal.Callback, CompilerPass {
   //
   static final DiagnosticType UNEXPECTED_TOKEN = DiagnosticType.error(
       "JSC_INTERNAL_ERROR_UNEXPECTED_TOKEN",
-      "Internal Error: Don't know how to handle {0}");
+      "Internal Error: TypeCheck doesn''t know how to handle {0}");
 
 
   //
@@ -72,8 +74,6 @@ public class TypeCheck implements NodeTraversal.Callback, CompilerPass {
   protected static final String OVERRIDING_PROTOTYPE_WITH_NON_OBJECT =
       "overriding prototype with non-object";
 
-  // TODO(user): make all the non private messages private once the
-  // TypedScopeCreator has been merged with the type checker.
   static final DiagnosticType DETERMINISTIC_TEST =
       DiagnosticType.warning(
           "JSC_DETERMINISTIC_TEST",
@@ -86,11 +86,18 @@ public class TypeCheck implements NodeTraversal.Callback, CompilerPass {
           "JSC_INEXISTENT_ENUM_ELEMENT",
           "element {0} does not exist on this enum");
 
-  // disabled by default. This one only makes sense if you're using
-  // well-typed externs.
+  // TODO(johnlenz): enable this by default, now that we have created
+  // "POSSIBLE_INEXISTENT_PROPERTY"
   static final DiagnosticType INEXISTENT_PROPERTY =
       DiagnosticType.disabled(
           "JSC_INEXISTENT_PROPERTY",
+          "Property {0} never defined on {1}");
+
+  // disabled by default. This one only makes sense if you're using
+  // well-typed externs.
+  static final DiagnosticType POSSIBLE_INEXISTENT_PROPERTY =
+      DiagnosticType.disabled(
+          "JSC_POSSIBLE_INEXISTENT_PROPERTY",
           "Property {0} never defined on {1}");
 
   static final DiagnosticType INEXISTENT_PROPERTY_WITH_SUGGESTION =
@@ -241,12 +248,14 @@ public class TypeCheck implements NodeTraversal.Callback, CompilerPass {
           "Illegal key, the object literal is a {0}");
 
   // If a diagnostic is disabled by default, do not add it in this list
-  // TODO(user): Either INEXISTENT_PROPERTY shouldn't be here, or we should
+  // TODO(dimvar): Either INEXISTENT_PROPERTY shouldn't be here, or we should
   // change DiagnosticGroups.setWarningLevel to not accidentally enable it.
   static final DiagnosticGroup ALL_DIAGNOSTICS = new DiagnosticGroup(
       DETERMINISTIC_TEST,
       INEXISTENT_ENUM_ELEMENT,
       INEXISTENT_PROPERTY,
+      POSSIBLE_INEXISTENT_PROPERTY,
+      INEXISTENT_PROPERTY_WITH_SUGGESTION,
       NOT_A_CONSTRUCTOR,
       BIT_OPERATION,
       NOT_CALLABLE,
@@ -510,6 +519,7 @@ public class TypeCheck implements NodeTraversal.Callback, CompilerPass {
         // way.
         if (!expr.isObjectLit()) {
           validator.expectCanCast(t, n, castType, exprType);
+          validator.expectCastIsNecessary(t, n, castType, exprType);
         }
         ensureTyped(t, n, castType);
 
@@ -1020,44 +1030,13 @@ public class TypeCheck implements NodeTraversal.Callback, CompilerPass {
     }
   }
 
-  /**
-   * After a struct object is created, we can't add new properties to it, with
-   * one exception. We allow creation of "static" properties like
-   * Foo.prototype.bar = baz;
-   * where Foo.prototype is a struct, if the assignment happens at the top level
-   * and the constructor Foo is defined in the same file.
-   */
   private void checkPropCreation(NodeTraversal t, Node lvalue) {
     if (lvalue.isGetProp()) {
-      Node obj = lvalue.getFirstChild();
+      JSType objType = getJSType(lvalue.getFirstChild());
       Node prop = lvalue.getLastChild();
-      JSType objType = getJSType(obj);
-      String pname = prop.getString();
-
-      if (!objType.isStruct() || objType.hasProperty(pname)) {
-        return;
+      if (objType.isStruct() && !objType.hasProperty(prop.getString())) {
+        report(t, prop, ILLEGAL_PROPERTY_CREATION);
       }
-      Scope s = t.getScope();
-      if (obj.isThis() && getJSType(s.getRootNode()).isConstructor()) {
-        return;
-      }
-      // Prop created outside ctor, check that it's a static prop
-      Node assgnExp = lvalue.getParent();
-      Node assgnStm = assgnExp.getParent();
-      if (objType instanceof ObjectType &&
-          s.isGlobal() &&
-          NodeUtil.isPrototypePropertyDeclaration(assgnStm)) {
-        ObjectType instance =
-            objType.toObjectType().getOwnerFunction().getInstanceType();
-        String file = lvalue.getSourceFileName();
-        Node ctor = instance.getConstructor().getSource();
-        if (ctor != null && ctor.getSourceFileName().equals(file)) {
-          JSType rvalueType = assgnExp.getLastChild().getJSType();
-          instance.defineInferredProperty(pname, rvalueType, lvalue);
-          return;
-        }
-      }
-      report(t, prop, ILLEGAL_PROPERTY_CREATION);
     }
   }
 
@@ -1409,6 +1388,11 @@ public class TypeCheck implements NodeTraversal.Callback, CompilerPass {
       return false;
     }
 
+    // Not need to type first key in for in.
+    if (NodeUtil.isForIn(parent) && parent.getFirstChild() == n) {
+      return false;
+    }
+
     JSType type = n.getJSType();
     if (type == null) {
       type = getNativeType(UNKNOWN_TYPE);
@@ -1493,14 +1477,21 @@ public class TypeCheck implements NodeTraversal.Callback, CompilerPass {
         reportMissingProperties &&
         (!isPropertyTest(n) || objectType.isStruct())) {
       if (!typeRegistry.canPropertyBeDefined(objectType, propName)) {
-        SuggestionPair pair =
-            getClosestPropertySuggestion(objectType, propName);
+        boolean lowConfidence = objectType.isUnknownType()
+            || objectType.isEquivalentTo(getNativeType(OBJECT_TYPE));
+        SuggestionPair pair = null;
+        if (!lowConfidence) {
+          pair = getClosestPropertySuggestion(objectType, propName);
+        }
         if (pair != null && pair.distance * 4 < propName.length()) {
           report(t, n, INEXISTENT_PROPERTY_WITH_SUGGESTION, propName,
               validator.getReadableJSTypeName(n.getFirstChild(), true),
               pair.suggestion);
         } else {
-          report(t, n, INEXISTENT_PROPERTY, propName,
+          DiagnosticType reportType = lowConfidence ?
+              POSSIBLE_INEXISTENT_PROPERTY :
+              INEXISTENT_PROPERTY;
+          report(t, n, reportType, propName,
               validator.getReadableJSTypeName(n.getFirstChild(), true));
         }
       }
@@ -1779,15 +1770,37 @@ public class TypeCheck implements NodeTraversal.Callback, CompilerPass {
       if (functionType.getExtendedInterfacesCount() > 1) {
         // Only check when extending more than one interfaces
         HashMap<String, ObjectType> properties
-            = new HashMap<String, ObjectType>();
+            = new HashMap<>();
         HashMap<String, ObjectType> currentProperties
-            = new HashMap<String, ObjectType>();
+            = new HashMap<>();
         for (ObjectType interfaceType : functionType.getExtendedInterfaces()) {
           currentProperties.clear();
           checkInterfaceConflictProperties(t, n, functionPrivateName,
               properties, currentProperties, interfaceType);
           properties.putAll(currentProperties);
         }
+      }
+    }
+  }
+
+  /**
+   * Validate class-defining calls.
+   * Because JS has no 'native' syntax for defining classes, we need
+   * to do this manually.
+   */
+  private void checkCallConventions(NodeTraversal t, Node n) {
+    SubclassRelationship relationship =
+        compiler.getCodingConvention().getClassesDefinedByCall(n);
+    Scope scope = t.getScope();
+    if (relationship != null) {
+      ObjectType superClass = TypeValidator.getInstanceOfCtor(
+          scope.getVar(relationship.superclassName));
+      ObjectType subClass = TypeValidator.getInstanceOfCtor(
+          scope.getVar(relationship.subclassName));
+      if (relationship.type == SubclassType.INHERITS &&
+          superClass != null && !superClass.isEmptyType() &&
+          subClass != null && !subClass.isEmptyType()) {
+        validator.expectSuperType(t, n, superClass, subClass);
       }
     }
   }
@@ -1800,6 +1813,8 @@ public class TypeCheck implements NodeTraversal.Callback, CompilerPass {
    * @param n The node being visited.
    */
   private void visitCall(NodeTraversal t, Node n) {
+    checkCallConventions(t, n);
+
     Node child = n.getFirstChild();
     JSType childType = getJSType(child).restrictByNotNullOrUndefined();
 
@@ -1814,16 +1829,8 @@ public class TypeCheck implements NodeTraversal.Callback, CompilerPass {
     if (childType.isFunctionType()) {
       FunctionType functionType = childType.toMaybeFunctionType();
 
-      boolean isExtern = false;
-      JSDocInfo functionJSDocInfo = functionType.getJSDocInfo();
-      if (functionJSDocInfo != null  &&
-          functionJSDocInfo.getAssociatedNode() != null) {
-        isExtern = functionJSDocInfo.getAssociatedNode().isFromExterns();
-      }
-
       // Non-native constructors should not be called directly
-      // unless they specify a return type and are defined
-      // in an extern.
+      // unless they specify a return type
       if (functionType.isConstructor() &&
           !functionType.isNativeObjectType() &&
           (functionType.getReturnType().isUnknownType() ||
